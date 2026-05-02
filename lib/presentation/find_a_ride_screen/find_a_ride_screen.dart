@@ -25,7 +25,6 @@ class _FindARideScreenState extends State<FindARideScreen>
   late List<Animation<Offset>> _cardSlideAnimations;
   late List<Animation<double>> _cardFadeAnimations;
 
-
   @override
   void initState() {
     super.initState();
@@ -71,8 +70,6 @@ class _FindARideScreenState extends State<FindARideScreen>
     }
     super.dispose();
   }
-
-
 
   void _onNavTap(int index) {
     // TODO: Replace with Riverpod/Bloc for production
@@ -178,12 +175,11 @@ class _FindARideScreenState extends State<FindARideScreen>
 
                 return {
                   'id': doc.id,
-                  'driverName': "Driver",
-                  'driverInitial': "D",
-                  'rating': 4.5,
-                  'totalRides': 10,
+                  'driverName': data['driverName'] ?? 'Unknown Driver',
+                  'driverInitial': (data['driverName'] ?? 'U')[0].toUpperCase(),
+                  'rating': (data['rating'] ?? 4.5).toDouble(),
+                  'totalRides': data['totalRides'] ?? 0,
                   'currency': '৳',
-
                   'fromLocation': data['fromLocation'] ?? '',
                   'toLocation': data['toLocation'] ?? '',
                   'pricePerSeat': data['pricePerSeat'] ?? 0,
@@ -193,13 +189,12 @@ class _FindARideScreenState extends State<FindARideScreen>
                   'vehicleType': data['vehicleType'] ?? '',
                   'hasAC': data['hasAC'] ?? false,
                   'isFemaleOnly': data['isFemaleOnly'] ?? false,
-
                   'stops': (data['stops'] ?? []).length,
-                  'departureDate': "Today",
-                  'departureTime': "Soon",
-                  'distance': 0.0,
-                  'notes': '',
-                  'isTopRated': false,
+                  'departureDate': data['departureDate'] ?? 'Today',
+                  'departureTime': data['departureTime'] ?? 'Soon',
+                  'distance': (data['distance'] ?? 0.0).toDouble(),
+                  'notes': data['notes'] ?? '',
+                  'isTopRated': data['isTopRated'] ?? false,
                 };
               }).toList();
 
