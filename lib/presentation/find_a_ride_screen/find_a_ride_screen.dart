@@ -3,6 +3,7 @@ import './widgets/female_only_banner_widget.dart';
 import './widgets/ride_card_widget.dart';
 import './widgets/sort_filter_bar_widget.dart';
 import './widgets/vehicle_type_filter_widget.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FindARideScreen extends StatefulWidget {
   const FindARideScreen({super.key});
@@ -15,135 +16,26 @@ class FindARideScreen extends StatefulWidget {
 class _FindARideScreenState extends State<FindARideScreen>
     with TickerProviderStateMixin {
   int _selectedNavIndex = 0;
-  int _selectedSortIndex = 0;
-  String _selectedVehicleType = 'All';
+  final int _selectedSortIndex = 0;
+  final String _selectedVehicleType = 'All';
+  // ignore: unused_field
   bool _isLoading = false;
 
   late List<AnimationController> _cardAnimControllers;
   late List<Animation<Offset>> _cardSlideAnimations;
   late List<Animation<double>> _cardFadeAnimations;
 
-  final List<Map<String, dynamic>> _rideMaps = [
-    {
-      'id': 'ride_001',
-      'driverName': 'Rahim Ahmed',
-      'driverAvatar':
-          'https://img.rocket.new/generatedImages/rocket_gen_img_1d126af2f-1763293474375.png',
-      'driverAvatarSemanticLabel':
-          'Professional headshot of Bangladeshi man with short black hair wearing casual blue shirt',
-      'driverInitial': 'R',
-      'rating': 4.6,
-      'totalRides': 32,
-      'pricePerSeat': 80,
-      'currency': '₦',
-      'fromLocation': 'Mirpur',
-      'toLocation': 'BUET',
-      'stops': 6,
-      'departureDate': '09 Apr',
-      'departureTime': '7:30 AM',
-      'seatsLeft': 1,
-      'totalSeats': 3,
-      'distance': 12.3,
-      'vehicleModel': 'Black Honda CB',
-      'vehicleType': 'Bike',
-      'hasAC': false,
-      'notes': 'Bike ride, helmet provided. You can board/exit at any stop.',
-      'isFemaleOnly': false,
-      'isTopRated': true,
-    },
-    {
-      'id': 'ride_002',
-      'driverName': 'Nadia Islam',
-      'driverAvatar':
-          'https://img.rocket.new/generatedImages/rocket_gen_img_1228adf75-1763298678714.png',
-      'driverAvatarSemanticLabel':
-          'Young Bangladeshi woman with long dark hair smiling in professional attire',
-      'driverInitial': 'N',
-      'rating': 4.9,
-      'totalRides': 87,
-      'pricePerSeat': 60,
-      'currency': '₦',
-      'fromLocation': 'Dhanmondi',
-      'toLocation': 'Gulshan',
-      'stops': 3,
-      'departureDate': '09 Apr',
-      'departureTime': '8:00 AM',
-      'seatsLeft': 2,
-      'totalSeats': 3,
-      'distance': 8.5,
-      'vehicleModel': 'White Toyota Axio',
-      'vehicleType': 'Car',
-      'hasAC': true,
-      'notes': 'AC car ride. Female passengers only. Door-to-door available.',
-      'isFemaleOnly': true,
-      'isTopRated': true,
-    },
-    {
-      'id': 'ride_003',
-      'driverName': 'Karim Hossain',
-      'driverAvatar':
-          'https://img.rocket.new/generatedImages/rocket_gen_img_1bae56d9d-1772244976512.png',
-      'driverAvatarSemanticLabel':
-          'Middle-aged Bangladeshi man with beard wearing grey polo shirt',
-      'driverInitial': 'K',
-      'rating': 4.3,
-      'totalRides': 156,
-      'pricePerSeat': 50,
-      'currency': '₦',
-      'fromLocation': 'Uttara',
-      'toLocation': 'Motijheel',
-      'stops': 8,
-      'departureDate': '09 Apr',
-      'departureTime': '7:00 AM',
-      'seatsLeft': 3,
-      'totalSeats': 4,
-      'distance': 18.7,
-      'vehicleModel': 'Silver Honda City',
-      'vehicleType': 'Car',
-      'hasAC': false,
-      'notes': 'Regular commute. Flexible pickup points along the main road.',
-      'isFemaleOnly': false,
-      'isTopRated': false,
-    },
-    {
-      'id': 'ride_004',
-      'driverName': 'Tasnim Sultana',
-      'driverAvatar':
-          'https://img.rocket.new/generatedImages/rocket_gen_img_1d662602c-1772476802747.png',
-      'driverAvatarSemanticLabel':
-          'Young Bangladeshi woman with hijab smiling outdoors in natural light',
-      'driverInitial': 'T',
-      'rating': 4.7,
-      'totalRides': 43,
-      'pricePerSeat': 70,
-      'currency': '₦',
-      'fromLocation': 'Banani',
-      'toLocation': 'Rayer Bazar',
-      'stops': 4,
-      'departureDate': '09 Apr',
-      'departureTime': '8:30 AM',
-      'seatsLeft': 1,
-      'totalSeats': 2,
-      'distance': 10.1,
-      'vehicleModel': 'Blue Yamaha FZS',
-      'vehicleType': 'Bike',
-      'hasAC': false,
-      'notes': 'Female only. Helmet provided. Safe and reliable daily commute.',
-      'isFemaleOnly': true,
-      'isTopRated': false,
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
-    _initAnimations();
-    _startEntranceAnimation();
+    _cardAnimControllers = [];
+    _cardSlideAnimations = [];
+    _cardFadeAnimations = [];
   }
 
-  void _initAnimations() {
+  void _initAnimations(int rideCount) {
     _cardAnimControllers = List.generate(
-      _rideMaps.length,
+      rideCount,
       (i) => AnimationController(
         vsync: this,
         duration: Duration(milliseconds: 350 + (i * 60)),
@@ -164,6 +56,7 @@ class _FindARideScreenState extends State<FindARideScreen>
   }
 
   void _startEntranceAnimation() async {
+    await Future.delayed(const Duration(milliseconds: 100));
     for (int i = 0; i < _cardAnimControllers.length; i++) {
       await Future.delayed(Duration(milliseconds: i * 80));
       if (mounted) _cardAnimControllers[i].forward();
@@ -176,14 +69,6 @@ class _FindARideScreenState extends State<FindARideScreen>
       ctrl.dispose();
     }
     super.dispose();
-  }
-
-  List<Map<String, dynamic>> get _filteredRides {
-    return _rideMaps.where((ride) {
-      if (_selectedVehicleType == 'All') return true;
-      if (_selectedVehicleType == 'AC') return ride['hasAC'] == true;
-      return ride['vehicleType'] == _selectedVehicleType;
-    }).toList();
   }
 
   void _onNavTap(int index) {
@@ -201,20 +86,50 @@ class _FindARideScreenState extends State<FindARideScreen>
     if (mounted) {
       setState(() => _isLoading = false);
       for (final ctrl in _cardAnimControllers) {
-        ctrl.reset();
+        if (ctrl.isAnimating) ctrl.reset();
       }
       _startEntranceAnimation();
     }
+  }
+
+  void _handleLogout() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Logout',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+        ),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Login screen-e pathiye dibe
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.loginScreen,
+                (route) => false,
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isTablet = MediaQuery.of(context).size.width >= 600;
-    final filteredRides = _filteredRides;
-    final femaleOnlyCount = _rideMaps
-        .where((r) => r['isFemaleOnly'] == true)
-        .length;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -226,17 +141,10 @@ class _FindARideScreenState extends State<FindARideScreen>
                     currentIndex: _selectedNavIndex,
                     onTap: _onNavTap,
                   ),
-                  Expanded(
-                    child: _buildBody(
-                      theme,
-                      filteredRides,
-                      femaleOnlyCount,
-                      isTablet,
-                    ),
-                  ),
+                  Expanded(child: _buildBody(theme, isTablet)),
                 ],
               )
-            : _buildBody(theme, filteredRides, femaleOnlyCount, isTablet),
+            : _buildBody(theme, isTablet),
       ),
       bottomNavigationBar: isTablet
           ? null
@@ -244,85 +152,59 @@ class _FindARideScreenState extends State<FindARideScreen>
     );
   }
 
-  Widget _buildBody(
-    ThemeData theme,
-    List<Map<String, dynamic>> filteredRides,
-    int femaleOnlyCount,
-    bool isTablet,
-  ) {
+  Widget _buildBody(ThemeData theme, bool isTablet) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildAppBar(theme),
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: _onRefresh,
-            color: AppTheme.primary,
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (femaleOnlyCount > 0)
-                        FemaleOnlyBannerWidget(count: femaleOnlyCount),
-                      SortFilterBarWidget(
-                        selectedIndex: _selectedSortIndex,
-                        onSortSelected: (i) =>
-                            setState(() => _selectedSortIndex = i),
-                      ),
-                      VehicleTypeFilterWidget(
-                        selectedType: _selectedVehicleType,
-                        onTypeSelected: (type) =>
-                            setState(() => _selectedVehicleType = type),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                        child: Text(
-                          '${filteredRides.length} ride${filteredRides.length != 1 ? 's' : ''} available',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (filteredRides.isEmpty)
-                  SliverFillRemaining(
-                    child: EmptyStateWidget(
-                      icon: Icons.help_outline,
-                      title: 'No rides found',
-                      description:
-                          'No rides match your current filters. Try changing the vehicle type or sort order.',
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    sliver: isTablet
-                        ? SliverGrid(
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 12,
-                                  childAspectRatio: 0.75,
-                                ),
-                            delegate: SliverChildBuilderDelegate(
-                              (ctx, i) => _buildAnimatedCard(filteredRides, i),
-                              childCount: filteredRides.length,
-                            ),
-                          )
-                        : SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (ctx, i) => _buildAnimatedCard(filteredRides, i),
-                              childCount: filteredRides.length,
-                            ),
-                          ),
-                  ),
-              ],
-            ),
+          child: StreamBuilder(
+            stream: FirebaseFirestore.instance.collection('rides').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text("No rides available"));
+              }
+
+              final rides = snapshot.data!.docs.map((doc) {
+                final data = doc.data();
+                _initAnimations(snapshot.data!.docs.length);
+
+                return {
+                  'id': doc.id,
+                  'driverName': data['driverName'] ?? 'Unknown Driver',
+                  'driverInitial': (data['driverName'] ?? 'U')[0].toUpperCase(),
+                  'rating': (data['rating'] ?? 4.5).toDouble(),
+                  'totalRides': data['totalRides'] ?? 0,
+                  'currency': '৳',
+                  'fromLocation': data['fromLocation'] ?? '',
+                  'toLocation': data['toLocation'] ?? '',
+                  'pricePerSeat': data['pricePerSeat'] ?? 0,
+                  'seatsLeft': data['availableSeats'] ?? 0,
+                  'totalSeats': data['totalSeats'] ?? 0,
+                  'vehicleModel': data['vehicleModel'] ?? '',
+                  'vehicleType': data['vehicleType'] ?? '',
+                  'hasAC': data['hasAC'] ?? false,
+                  'isFemaleOnly': data['isFemaleOnly'] ?? false,
+                  'stops': (data['stops'] ?? []).length,
+                  'departureDate': data['departureDate'] ?? 'Today',
+                  'departureTime': data['departureTime'] ?? 'Soon',
+                  'distance': (data['distance'] ?? 0.0).toDouble(),
+                  'notes': data['notes'] ?? '',
+                  'isTopRated': data['isTopRated'] ?? false,
+                };
+              }).toList();
+
+              return ListView.builder(
+                itemCount: rides.length,
+                itemBuilder: (context, index) {
+                  return _buildAnimatedCard(rides, index);
+                },
+              );
+            },
           ),
         ),
       ],
@@ -366,8 +248,15 @@ class _FindARideScreenState extends State<FindARideScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 16),
       child: Row(
         children: [
           Expanded(
@@ -407,70 +296,82 @@ class _FindARideScreenState extends State<FindARideScreen>
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
-                    letterSpacing: -0.3,
                   ),
                 ),
               ],
             ),
           ),
+          // Action Buttons (Notification, Profile/Logout, Filter)
           Row(
             children: [
               IconButton(
                 onPressed: () {},
-                icon: Stack(
-                  children: [
-                    const Icon(
-                      Icons.notifications_outlined,
-                      color: Colors.white,
-                      size: 26,
-                    ),
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFF5252),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ],
+                icon: const Icon(
+                  Icons.notifications_none_rounded,
+                  color: Colors.white,
                 ),
               ),
-              const SizedBox(width: 4),
-              GestureDetector(
-                onTap: () {},
+              // User Avatar with Popup Menu
+              PopupMenuButton<int>(
+                offset: const Offset(0, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                onSelected: (value) {
+                  if (value == 2) _handleLogout();
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 1,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.person_outline,
+                          color: AppTheme.textPrimary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('My Profile'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
+                    value: 2,
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.logout_rounded,
+                          color: Colors.redAccent,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Logout',
+                          style: TextStyle(color: Colors.redAccent),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 child: Container(
                   width: 38,
                   height: 38,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.white.withAlpha(77),
-                        Colors.white.withAlpha(38),
-                      ],
-                    ),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withAlpha(128),
+                      color: Colors.white.withAlpha(100),
                       width: 1.5,
                     ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'N',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
+                    image: const DecorationImage(
+                      image: NetworkImage('https://i.pravatar.cc/150?u=nadia'),
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               _FilterButton(),
             ],
           ),

@@ -47,81 +47,81 @@ class AppTheme {
     textTheme: GoogleFonts.plusJakartaSansTextTheme(
       TextTheme(
         displayLarge: TextStyle(
-          fontSize: 32,
+          fontSize: 34,
           fontWeight: FontWeight.w800,
           color: textPrimary,
           letterSpacing: -0.5,
         ),
         displayMedium: TextStyle(
-          fontSize: 28,
+          fontSize: 30,
           fontWeight: FontWeight.w700,
           color: textPrimary,
           letterSpacing: -0.3,
         ),
         displaySmall: TextStyle(
-          fontSize: 24,
+          fontSize: 26,
           fontWeight: FontWeight.w700,
           color: textPrimary,
         ),
         headlineLarge: TextStyle(
-          fontSize: 22,
+          fontSize: 24,
           fontWeight: FontWeight.w700,
           color: textPrimary,
         ),
         headlineMedium: TextStyle(
-          fontSize: 20,
+          fontSize: 22,
           fontWeight: FontWeight.w700,
           color: textPrimary,
         ),
         headlineSmall: TextStyle(
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
         titleLarge: TextStyle(
-          fontSize: 16,
+          fontSize: 18,
           fontWeight: FontWeight.w700,
           color: textPrimary,
         ),
         titleMedium: TextStyle(
-          fontSize: 15,
+          fontSize: 16,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
         titleSmall: TextStyle(
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
         bodyLarge: TextStyle(
-          fontSize: 15,
+          fontSize: 16,
           fontWeight: FontWeight.w400,
           color: textPrimary,
         ),
         bodyMedium: TextStyle(
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: FontWeight.w400,
           color: textSecondary,
         ),
         bodySmall: TextStyle(
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w400,
           color: muted,
         ),
         labelLarge: TextStyle(
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: FontWeight.w600,
           color: textPrimary,
           letterSpacing: 0.1,
         ),
         labelMedium: TextStyle(
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w600,
           color: textSecondary,
           letterSpacing: 0.3,
         ),
         labelSmall: TextStyle(
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           color: muted,
           letterSpacing: 0.5,
@@ -135,7 +135,7 @@ class AppTheme {
       scrolledUnderElevation: 0,
       centerTitle: false,
       titleTextStyle: GoogleFonts.plusJakartaSans(
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: FontWeight.w700,
         color: Colors.white,
       ),
@@ -201,7 +201,7 @@ class AppTheme {
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 15,
+          fontSize: 16,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -213,7 +213,7 @@ class AppTheme {
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 15,
+          fontSize: 16,
           fontWeight: FontWeight.w600,
         ),
       ),
