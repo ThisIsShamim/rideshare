@@ -4,6 +4,9 @@ import 'package:sizer/sizer.dart';
 import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -18,10 +21,18 @@ class _SignUpScreenState extends State<SignUpScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+
+  // New state variables for Gender and Role
+  String? _selectedGender;
+  String? _selectedRole;
+  final List<String> _genderOptions = ['Male', 'Female'];
+  final List<String> _roleOptions = ['Student', 'Teacher', 'Staff'];
+
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _isLoading = false;
   bool _agreeToTerms = false;
+
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
@@ -51,30 +62,91 @@ class _SignUpScreenState extends State<SignUpScreen>
     super.dispose();
   }
 
-  void _handleSignUp() {
+  // void _handleSignUp() {
+  //   if (!_formKey.currentState!.validate()) return;
+  //   if (!_agreeToTerms) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text(
+  //           'Please agree to the Terms & Privacy Policy',
+  //           style: GoogleFonts.plusJakartaSans(fontSize: 11.sp),
+  //         ),
+  //         backgroundColor: AppTheme.error,
+  //         behavior: SnackBarBehavior.floating,
+  //         shape: RoundedRectangleBorder(
+  //           borderRadius: BorderRadius.circular(10.0),
+  //         ),
+  //       ),
+  //     );
+  //     return;
+  //   }
+  //   setState(() => _isLoading = true);
+
+  //   // You can now access _selectedGender and _selectedRole here
+  //   // print("Gender: $_selectedGender, Role: $_selectedRole");
+
+  //   Future.delayed(const Duration(milliseconds: 900), () {
+  //     if (!mounted) return;
+  //     setState(() => _isLoading = false);
+  //     Navigator.pushReplacementNamed(context, AppRoutes.findARideScreen);
+  //   });
+  // }
+
+  // Code er upore import korte bhulbe na:
+  // import 'package:http/http.dart' as http;
+  // import 'dart:convert';
+
+  void _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
+
     if (!_agreeToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Please agree to the Terms & Privacy Policy',
-            style: GoogleFonts.plusJakartaSans(fontSize: 11.sp),
-          ),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.0),
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please agree to Terms')));
       return;
     }
+
     setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
+
+    try {
+      // 1️⃣ Firebase Auth (create account)
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+
+      String uid = userCredential.user!.uid;
+
+      // 2️⃣ Firestore save
+      await FirebaseFirestore.instance.collection("users").doc(uid).set({
+        "uid": uid,
+        "fullname": _nameController.text.trim(),
+        "email": _emailController.text.trim(),
+        "gender": _selectedGender,
+        "usertype": _selectedRole,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+
       setState(() => _isLoading = false);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Account Created Successfully"),
+          backgroundColor: Colors.green,
+        ),
+      );
+
       Navigator.pushReplacementNamed(context, AppRoutes.findARideScreen);
-    });
+    } catch (e) {
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    }
   }
 
   @override
@@ -194,6 +266,33 @@ class _SignUpScreenState extends State<SignUpScreen>
             },
           ),
           SizedBox(height: 2.h),
+
+          // --- NEW GENDER DROPDOWN ---
+          _buildLabel('Gender'),
+          SizedBox(height: 0.8.h),
+          _buildDropdown(
+            value: _selectedGender,
+            hint: 'Select Gender',
+            icon: Icons.wc_outlined,
+            items: _genderOptions,
+            onChanged: (val) => setState(() => _selectedGender = val),
+            validatorMsg: 'Please select your gender',
+          ),
+          SizedBox(height: 2.h),
+
+          // --- NEW ROLE DROPDOWN ---
+          _buildLabel('I am a'),
+          SizedBox(height: 0.8.h),
+          _buildDropdown(
+            value: _selectedRole,
+            hint: 'Select Role',
+            icon: Icons.badge_outlined,
+            items: _roleOptions,
+            onChanged: (val) => setState(() => _selectedRole = val),
+            validatorMsg: 'Please select your role',
+          ),
+          SizedBox(height: 2.h),
+
           _buildLabel('Email address'),
           SizedBox(height: 0.8.h),
           TextFormField(
@@ -334,6 +433,38 @@ class _SignUpScreenState extends State<SignUpScreen>
           SizedBox(height: 2.h),
         ],
       ),
+    );
+  }
+
+  // --- NEW HELPER WIDGET FOR DROPDOWNS ---
+  Widget _buildDropdown({
+    required String? value,
+    required String hint,
+    required IconData icon,
+    required List<String> items,
+    required void Function(String?) onChanged,
+    required String validatorMsg,
+  }) {
+    return DropdownButtonFormField<String>(
+      initialValue: value,
+      icon: Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.muted),
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: 13.sp,
+        fontWeight: FontWeight.w500,
+        color: AppTheme.textPrimary,
+      ),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: GoogleFonts.plusJakartaSans(color: AppTheme.muted),
+        prefixIcon: Icon(icon, color: AppTheme.muted, size: 5.w),
+        // Adding consistent content padding
+        contentPadding: EdgeInsets.symmetric(vertical: 2.h, horizontal: 3.w),
+      ),
+      items: items.map((String item) {
+        return DropdownMenuItem<String>(value: item, child: Text(item));
+      }).toList(),
+      onChanged: onChanged,
+      validator: (v) => v == null ? validatorMsg : null,
     );
   }
 

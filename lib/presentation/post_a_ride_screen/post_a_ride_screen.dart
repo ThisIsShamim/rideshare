@@ -1,3 +1,7 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/app_export.dart';
 import './widgets/route_section_widget.dart';
 import './widgets/schedule_section_widget.dart';
@@ -11,7 +15,6 @@ class PostARideScreen extends StatefulWidget {
   State<PostARideScreen> createState() => _PostARideScreenState();
 }
 
-// TODO: Replace with Riverpod/Bloc for production
 class _PostARideScreenState extends State<PostARideScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isPosting = false;
@@ -141,9 +144,7 @@ class _PostARideScreenState extends State<PostARideScreen> {
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: isDone
-                        ? () => setState(() => _currentStep = i)
-                        : null,
+                    onTap: isDone ? () => setState(() => _currentStep = i) : null,
                     child: Column(
                       children: [
                         AnimatedContainer(
@@ -155,8 +156,8 @@ class _PostARideScreenState extends State<PostARideScreen> {
                             color: isDone
                                 ? AppTheme.success
                                 : isActive
-                                ? AppTheme.primary
-                                : AppTheme.surfaceVariant,
+                                    ? AppTheme.primary
+                                    : AppTheme.surfaceVariant,
                             shape: BoxShape.circle,
                           ),
                           child: Center(
@@ -171,9 +172,7 @@ class _PostARideScreenState extends State<PostARideScreen> {
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
-                                      color: isActive
-                                          ? Colors.white
-                                          : AppTheme.muted,
+                                      color: isActive ? Colors.white : AppTheme.muted,
                                     ),
                                   ),
                           ),
@@ -183,14 +182,12 @@ class _PostARideScreenState extends State<PostARideScreen> {
                           label,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 10,
-                            fontWeight: isActive
-                                ? FontWeight.w700
-                                : FontWeight.w500,
+                            fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                             color: isActive
                                 ? AppTheme.primary
                                 : isDone
-                                ? AppTheme.success
-                                : AppTheme.muted,
+                                    ? AppTheme.success
+                                    : AppTheme.muted,
                           ),
                         ),
                       ],
@@ -203,9 +200,7 @@ class _PostARideScreenState extends State<PostARideScreen> {
                       height: 2,
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: _currentStep > i
-                            ? AppTheme.success
-                            : AppTheme.cardBorder,
+                        color: _currentStep > i ? AppTheme.success : AppTheme.cardBorder,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -336,34 +331,22 @@ class _PostARideScreenState extends State<PostARideScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          _PreviewRow(
-            label: 'From',
-            value: _fromLocation.isEmpty ? '—' : _fromLocation,
-          ),
+          _PreviewRow(label: 'From', value: _fromLocation.isEmpty ? '—' : _fromLocation),
           const SizedBox(height: 8),
-          _PreviewRow(
-            label: 'To',
-            value: _toLocation.isEmpty ? '—' : _toLocation,
-          ),
+          _PreviewRow(label: 'To', value: _toLocation.isEmpty ? '—' : _toLocation),
           const SizedBox(height: 8),
-          _PreviewRow(
-            label: 'Stops',
-            value: _stops.isEmpty ? '0' : '${_stops.length}',
-          ),
+          _PreviewRow(label: 'Stops', value: _stops.isEmpty ? '0' : '${_stops.length}'),
           const SizedBox(height: 8),
           _PreviewRow(
             label: 'Date',
-            value:
-                '${_departureDate.day.toString().padLeft(2, '0')} ${_monthName(_departureDate.month)}',
+            value: '${_departureDate.day.toString().padLeft(2, '0')} ${_monthName(_departureDate.month)}',
           ),
           const SizedBox(height: 8),
           _PreviewRow(label: 'Time', value: _departureTime.format(context)),
           const SizedBox(height: 8),
           _PreviewRow(
             label: 'Vehicle',
-            value: _vehicleModel.isEmpty
-                ? _vehicleType
-                : '$_vehicleColor $_vehicleModel',
+            value: _vehicleModel.isEmpty ? _vehicleType : '$_vehicleColor $_vehicleModel',
           ),
           const SizedBox(height: 8),
           _PreviewRow(label: 'Seats', value: '$_totalSeats available'),
@@ -408,20 +391,7 @@ class _PostARideScreenState extends State<PostARideScreen> {
   }
 
   String _monthName(int month) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return months[month - 1];
   }
 
@@ -445,10 +415,7 @@ class _PostARideScreenState extends State<PostARideScreen> {
             OutlinedButton(
               onPressed: () => setState(() => _currentStep--),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 side: BorderSide(color: AppTheme.primary, width: 1.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -456,11 +423,7 @@ class _PostARideScreenState extends State<PostARideScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.arrow_back_rounded,
-                    size: 16,
-                    color: AppTheme.primary,
-                  ),
+                  Icon(Icons.arrow_back_rounded, size: 16, color: AppTheme.primary),
                   const SizedBox(width: 6),
                   Text(
                     'Back',
@@ -481,9 +444,7 @@ class _PostARideScreenState extends State<PostARideScreen> {
               child: ElevatedButton(
                 onPressed: _isPosting ? null : _handleNextOrSubmit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isLastStep
-                      ? AppTheme.success
-                      : AppTheme.primary,
+                  backgroundColor: isLastStep ? AppTheme.success : AppTheme.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -502,9 +463,7 @@ class _PostARideScreenState extends State<PostARideScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            isLastStep
-                                ? Icons.check_circle_rounded
-                                : Icons.arrow_forward_rounded,
+                            isLastStep ? Icons.check_circle_rounded : Icons.arrow_forward_rounded,
                             color: Colors.white,
                             size: 18,
                           ),
@@ -527,28 +486,85 @@ class _PostARideScreenState extends State<PostARideScreen> {
     );
   }
 
+  // ফায়ারবেস সাবমিশন লজিক এখানে অ্যাড করা হয়েছে
   void _handleNextOrSubmit() async {
     if (_currentStep < _steps.length - 1) {
       setState(() => _currentStep++);
     } else {
-      setState(() => _isPosting = true);
-      await Future.delayed(const Duration(milliseconds: 1500));
-      if (mounted) {
-        setState(() => _isPosting = false);
+      // ফর্ম ভ্যালিডেশন চেক করতে পারেন এখানে (যেমন Location ফাঁকা আছে কিনা)
+      if (_fromLocation.isEmpty || _toLocation.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Ride posted successfully! Riders can now book your seats.',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-            ),
-            backgroundColor: AppTheme.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+          SnackBar(content: Text('Please fill all route details!')),
         );
-        Navigator.pop(context);
+        return;
+      }
+
+      setState(() => _isPosting = true);
+
+      try {
+        // Date এবং Time এক সাথে মার্জ করে DateTime তৈরি করছি
+        final departureDateTime = DateTime(
+          _departureDate.year,
+          _departureDate.month,
+          _departureDate.day,
+          _departureTime.hour,
+          _departureTime.minute,
+        );
+
+        // কারেন্ট ইউজারের আইডি নিচ্ছি (যদি লগইন করা না থাকে, তবে সেফটি চেক রাখা ভালো)
+        final String userId = FirebaseAuth.instance.currentUser?.uid ?? 'unknown_user';
+
+        // ফায়ারস্টোরে সেভ করার জন্য ডেটা ম্যাপ তৈরি করছি
+        final Map<String, dynamic> rideData = {
+          'driverId': userId,
+          'fromLocation': _fromLocation,
+          'toLocation': _toLocation,
+          'stops': _stops,
+          'departureTime': Timestamp.fromDate(departureDateTime), // ফায়ারবেস ফ্রেন্ডলি টাইমস্ট্যাম্প
+          'isRecurring': _isRecurring,
+          'vehicleType': _vehicleType,
+          'vehicleModel': _vehicleModel,
+          'vehicleColor': _vehicleColor,
+          'hasAC': _hasAC,
+          'totalSeats': _totalSeats,
+          'availableSeats': _totalSeats, // শুরুতে সব সিট ফাঁকা
+          'pricePerSeat': _pricePerSeat,
+          'isFemaleOnly': _isFemaleOnly,
+          'status': 'active', // রাইড স্ট্যাটাস
+          'createdAt': FieldValue.serverTimestamp(), // কখন পোস্ট হয়েছে
+        };
+
+        // Firebase Firestore-এ 'rides' কালেকশনে ডেটা পুশ করা হচ্ছে
+        await FirebaseFirestore.instance.collection('rides').add(rideData);
+
+        if (mounted) {
+          setState(() => _isPosting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Ride posted successfully! Riders can now book your seats.',
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: AppTheme.success,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+          Navigator.pop(context); // সাকসেসফুল হলে পেজ বন্ধ হয়ে যাবে
+        }
+      } catch (error) {
+        if (mounted) {
+          setState(() => _isPosting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to post ride: $error'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
   }

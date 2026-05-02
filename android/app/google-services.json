@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "687889462248",
+    "project_id": "universityrideshare-6cb8e",
+    "storage_bucket": "universityrideshare-6cb8e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:687889462248:android:24b2156844be7434dd2a5d",
+        "android_client_info": {
+          "package_name": "com.example.rideshare"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "687889462248-8mfi3c2k7jlemhek82sonoe1cf5f5nol.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZERxIV51z3N10J83f-H0cDmN-ZaoPvKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "687889462248-8mfi3c2k7jlemhek82sonoe1cf5f5nol.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "687889462248-8bhun49419n0f4q9f883d74fkr1eer4g.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.rideShare"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

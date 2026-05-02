@@ -24,7 +24,7 @@ class SortFilterBarWidget extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _sortOptions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final option = _sortOptions[i];
           final isSelected = selectedIndex == i;
