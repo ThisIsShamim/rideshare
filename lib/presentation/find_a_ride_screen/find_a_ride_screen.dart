@@ -16,8 +16,8 @@ class FindARideScreen extends StatefulWidget {
 class _FindARideScreenState extends State<FindARideScreen>
     with TickerProviderStateMixin {
   int _selectedNavIndex = 0;
-  int _selectedSortIndex = 0;
-  String _selectedVehicleType = 'All';
+  final int _selectedSortIndex = 0;
+  final String _selectedVehicleType = 'All';
   // ignore: unused_field
   bool _isLoading = false;
 
@@ -170,7 +170,7 @@ class _FindARideScreenState extends State<FindARideScreen>
               }
 
               final rides = snapshot.data!.docs.map((doc) {
-                final data = doc.data() as Map<String, dynamic>;
+                final data = doc.data();
                 _initAnimations(snapshot.data!.docs.length);
 
                 return {
