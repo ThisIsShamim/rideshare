@@ -1,4 +1,4 @@
-import '../../../core/app_export.dart';
+import '../core/app_export.dart';
 
 class RouteSectionWidget extends StatefulWidget {
   final String fromLocation;

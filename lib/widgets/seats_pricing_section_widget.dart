@@ -1,6 +1,6 @@
 
-import '../../../core/app_export.dart';
-import './section_header_widget.dart';
+import '../core/app_export.dart';
+import 'section_header_widget.dart';
 
 class SeatsPricingSectionWidget extends StatefulWidget {
   final int totalSeats;
