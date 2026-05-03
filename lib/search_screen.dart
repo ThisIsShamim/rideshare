@@ -168,7 +168,7 @@ class _FindRideScreenState extends State<FindRideScreen> {
   }
 
   Widget _buildRideCard(Map<String, dynamic> data) {
-    // ১. Time Format করা (Timestamp থেকে)
+    // ১. Time Format করা
     String formattedTime = 'Time N/A';
     if (data['departureTime'] != null) {
       DateTime dateTime = (data['departureTime'] as Timestamp).toDate();
@@ -189,23 +189,20 @@ class _FindRideScreenState extends State<FindRideScreen> {
         'Nov',
         'Dec',
       ];
-      final month = monthNames[dateTime.month - 1];
-      formattedTime = '${dateTime.day} $month - $hour:$minute $period';
+      formattedTime =
+          '${dateTime.day} ${monthNames[dateTime.month - 1]} - $hour:$minute $period';
     }
 
-    // ২. Stops গণনা করা (Array length)
-    int stopsCount = 0;
-    if (data['stops'] != null && data['stops'] is List) {
-      stopsCount = (data['stops'] as List).length;
-    }
-
-    // ৩. Vehicle Info তৈরি করা
+    // ২. Stops এবং Vehicle Info
+    int stopsCount = (data['stops'] is List)
+        ? (data['stops'] as List).length
+        : 0;
     String vehicleName =
         '${data['vehicleColor'] ?? ''} ${data['vehicleModel'] ?? ''}'.trim();
     if (vehicleName.isEmpty) vehicleName = data['vehicleType'] ?? 'Vehicle';
 
-    // ৪. Driver এর নাম (আপনার ডাটাবেসে driverId আছে, তাই আপাতত এখানে ডামি নাম দেখাচ্ছি। পরে users কালেকশন থেকে নাম আনতে হবে)
-    String driverName = "Driver";
+    // ৩. Driver ID সংগ্রহ (আপনার rides কালেকশনের 'driverId')
+    String driverId = data['driverId'] ?? '';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -214,8 +211,8 @@ class _FindRideScreenState extends State<FindRideScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          const BoxShadow(
+        boxShadow: const [
+          BoxShadow(
             color: Color.fromRGBO(0, 0, 0, 0.02),
             blurRadius: 10,
             offset: Offset(0, 4),
@@ -225,70 +222,117 @@ class _FindRideScreenState extends State<FindRideScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+          // --- Header Section with FutureBuilder (Updated with Query) ---
+          FutureBuilder<QuerySnapshot>(
+            // এখানে doc() এর বদলে where() ব্যবহার করা হয়েছে
+            future: driverId.isNotEmpty
+                ? FirebaseFirestore.instance
+                      .collection('users')
+                      .where(
+                        'uid',
+                        isEqualTo: driverId,
+                      ) // users এর uid ফিল্ডের সাথে মেলাবে
+                      .limit(1)
+                      .get()
+                : null,
+            builder: (context, snapshot) {
+              String driverName = "Loading...";
+              String? profilePic;
+
+              if (snapshot.connectionState == ConnectionState.done) {
+                // চেক করা হচ্ছে ডকুমেন্ট পাওয়া গেছে কি না
+                if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                  // প্রথম ডকুমেন্টটি নেওয়া হলো
+                  var userData =
+                      snapshot.data!.docs.first.data() as Map<String, dynamic>;
+                  // আপনার ইউজার ডেটাবেস অনুযায়ী 'fullname' ফেচ করা হচ্ছে
+                  driverName = userData['fullname'] ?? 'Unknown User';
+                  profilePic = userData['profilePicture'];
+                } else {
+                  driverName = "Not Found";
+                }
+              }
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.blue[600],
-                    child: Text(
-                      driverName[0],
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      Text(
-                        driverName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: Colors.blue[100],
+                        backgroundImage: profilePic != null
+                            ? NetworkImage(profilePic)
+                            : null,
+                        child: profilePic == null
+                            ? Text(
+                                driverName.isNotEmpty &&
+                                        driverName != "Loading..." &&
+                                        driverName != "Not Found"
+                                    ? driverName[0].toUpperCase()
+                                    : 'U',
+                                style: TextStyle(
+                                  color: Colors.blue[800],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
                       ),
-                      Row(
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 14),
-                          const SizedBox(width: 4),
-                          const Text(
-                            '4.5',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                              color: Colors.orange,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                driverName, // এখানে ফায়ারবেস থেকে আসা নাম দেখাবে
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(
+                                width: 4,
+                              ), // নামের এবং আইকনের মাঝে একটু ফাঁকা
+                              const Icon(
+                                Icons
+                                    .verified, // নামের ঠিক পাশেই ভেরিফাইড ব্লু-টিক
+                                color: Colors.blue,
+                                size: 16,
+                              ),
+                            ],
                           ),
+                          // "Verified Driver" টেক্সটটি এখান থেকে পুরোপুরি মুছে দেওয়া হয়েছে
                         ],
                       ),
                     ],
                   ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '৳${data['pricePerSeat'] ?? '0'}',
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '৳${data['pricePerSeat'] ?? '0'}',
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                      const Text(
+                        'per seat',
+                        style: TextStyle(color: Colors.grey, fontSize: 10),
+                      ),
+                    ],
                   ),
-                  const Text(
-                    'per seat',
-                    style: TextStyle(color: Colors.grey, fontSize: 10),
-                  ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
           const SizedBox(height: 16),
 
-          // Route Locations
+          // --- Route Locations ---
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -296,17 +340,10 @@ class _FindRideScreenState extends State<FindRideScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.circle, color: Colors.green, size: 12),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            data['fromLocation'] ?? 'Origin',
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ],
+                    _buildRouteRow(
+                      Icons.circle,
+                      Colors.green,
+                      data['fromLocation'] ?? 'Origin',
                     ),
                     Container(
                       margin: const EdgeInsets.only(left: 5),
@@ -314,55 +351,20 @@ class _FindRideScreenState extends State<FindRideScreen> {
                       width: 2,
                       color: Colors.grey[300],
                     ),
-                    Row(
-                      children: [
-                        const Icon(Icons.circle, color: Colors.red, size: 12),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            data['toLocation'] ?? 'Destination',
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ],
+                    _buildRouteRow(
+                      Icons.circle,
+                      Colors.red,
+                      data['toLocation'] ?? 'Destination',
                     ),
                   ],
                 ),
               ),
-              if (stopsCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.my_location,
-                        color: Colors.blue,
-                        size: 12,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$stopsCount stops',
-                        style: const TextStyle(
-                          color: Colors.blue,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              if (stopsCount > 0) _buildStopBadge(stopsCount),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Details Badges
+          // --- Details Badges ---
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -378,7 +380,7 @@ class _FindRideScreenState extends State<FindRideScreen> {
               if (data['hasAC'] == true)
                 _buildBadge(
                   Icons.ac_unit,
-                  'AC Available',
+                  'AC',
                   textColor: Colors.teal,
                   bgColor: Colors.teal[50],
                 ),
@@ -393,15 +395,13 @@ class _FindRideScreenState extends State<FindRideScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Action Buttons
+          // --- Action Buttons ---
           Row(
             children: [
               Expanded(
-                flex: 1,
                 child: OutlinedButton(
                   onPressed: () {},
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -419,7 +419,6 @@ class _FindRideScreenState extends State<FindRideScreen> {
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[600],
-                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -434,6 +433,48 @@ class _FindRideScreenState extends State<FindRideScreen> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper Widget: রুট রো তৈরির জন্য (কোড ক্লিন রাখার জন্য)
+  Widget _buildRouteRow(IconData icon, Color color, String location) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 12),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            location,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper Widget: স্টপ ব্যাজ
+  Widget _buildStopBadge(int count) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.my_location, color: Colors.blue, size: 12),
+          const SizedBox(width: 4),
+          Text(
+            '$count stops',
+            style: const TextStyle(
+              color: Colors.blue,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),

@@ -1,3 +1,4 @@
+import '../map_selection_screen.dart';
 import '../core/app_export.dart';
 
 class RouteSectionWidget extends StatefulWidget {
@@ -69,12 +70,31 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
           subtitle: 'Set your pickup and dropoff locations',
         ),
         const SizedBox(height: 16),
+        // --- Pickup Location Field Update ---
         _buildLocationField(
           controller: _fromController,
           label: 'From (Pickup Location)',
           hint: 'e.g. Mirpur 10 Circle',
           prefixColor: const Color(0xFF4CAF50),
           onChanged: widget.onFromChanged,
+          onMapTap: () async {
+            // Map Screen-এ নেভিগেট করা
+            final selectedPlace = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                // MapSelectionScreen এর নাম আপনি যা দেবেন সেটা এখানে বসাবেন
+                builder: (context) => const MapSelectionScreen(),
+              ),
+            );
+
+            // ম্যাপ থেকে অ্যাড্রেস সিলেক্ট করে আনলে সেটা কন্ট্রোলারে বসানো
+            if (selectedPlace != null && selectedPlace is String) {
+              setState(() {
+                _fromController.text = selectedPlace;
+              });
+              widget.onFromChanged(selectedPlace);
+            }
+          },
         ),
         const SizedBox(height: 12),
         Center(
@@ -94,12 +114,30 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
           ),
         ),
         const SizedBox(height: 12),
+        // --- Dropoff Location Field Update ---
         _buildLocationField(
           controller: _toController,
           label: 'To (Dropoff Location)',
           hint: 'e.g. BUET Gate',
           prefixColor: const Color(0xFFE53935),
           onChanged: widget.onToChanged,
+          onMapTap: () async {
+            // Map Screen-এ নেভিগেট করা
+            final selectedPlace = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MapSelectionScreen(),
+              ),
+            );
+
+            // ম্যাপ থেকে অ্যাড্রেস সিলেক্ট করে আনলে সেটা কন্ট্রোলারে বসানো
+            if (selectedPlace != null && selectedPlace is String) {
+              setState(() {
+                _toController.text = selectedPlace;
+              });
+              widget.onToChanged(selectedPlace);
+            }
+          },
         ),
         const SizedBox(height: 20),
         Text(
@@ -300,12 +338,14 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
     );
   }
 
+  // --- Updated _buildLocationField method ---
   Widget _buildLocationField({
     required TextEditingController controller,
     required String label,
     required String hint,
     required Color prefixColor,
     required Function(String) onChanged,
+    VoidCallback? onMapTap, // নতুন প্যারামিটার যোগ করা হয়েছে
   }) {
     return TextFormField(
       controller: controller,
@@ -331,6 +371,14 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
             ),
           ),
         ),
+        // --- ম্যাপ আইকনটি এখানে suffixIcon হিসেবে বসানো হয়েছে ---
+        suffixIcon: onMapTap != null
+            ? IconButton(
+                icon: Icon(Icons.map_rounded, color: AppTheme.primary),
+                onPressed: onMapTap,
+                tooltip: 'Pick from Map',
+              )
+            : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: AppTheme.cardBorder, width: 1.5),

@@ -3,9 +3,46 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Time format korar jonno
 import 'ride_details_screen.dart'; // ফাইলের নাম আপনার ফাইলের নামের সাথে মিলিয়ে নেবেন
 import 'ride_post.dart'; // <-- এই লাইনটি যোগ করুন
+import 'profile/profile.dart';
+import 'my_rides_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // ২. initState এর মাধ্যমে অ্যাপ চালু হলেই আপডেট ফাংশনটি কল হবে
+  @override
+  void initState() {
+    super.initState();
+    _updateExpiredRides(); // কল করা হলো
+  }
+
+  // ৩. আপডেট করার ফাংশনটি এখানে রাখা হলো
+  Future<void> _updateExpiredRides() async {
+    try {
+      final now = Timestamp.now();
+      final snapshot = await FirebaseFirestore.instance
+          .collection('rides')
+          .where('status', isEqualTo: 'active')
+          .where('departureTime', isLessThanOrEqualTo: now)
+          .get();
+
+      if (snapshot.docs.isEmpty) return;
+
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+      for (var doc in snapshot.docs) {
+        batch.update(doc.reference, {'status': 'inactive'});
+      }
+      await batch.commit();
+      debugPrint("Expired rides updated successfully.");
+    } catch (e) {
+      debugPrint("Error updating expired rides: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,12 +59,10 @@ class HomeScreen extends StatelessWidget {
           // Real-time Firebase Data List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
+              // ৪. StreamBuilder এ শুধু active রাইডগুলোই দেখানো হবে
               stream: FirebaseFirestore.instance
                   .collection('rides')
-                  .where(
-                    'status',
-                    isEqualTo: 'active',
-                  ) // Sudhu active ride dekhabe
+                  .where('status', isEqualTo: 'active')
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -52,7 +87,10 @@ class HomeScreen extends StatelessWidget {
                   itemCount: rides.length,
                   itemBuilder: (context, index) {
                     final doc = rides[index].data() as Map<String, dynamic>;
-                    return _buildRideCard(context, doc);
+                    return _buildRideCard(
+                      context,
+                      doc,
+                    ); // আপনার আগের _buildRideCard এখানে থাকবে
                   },
                 );
               },
@@ -64,13 +102,9 @@ class HomeScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF1A69FF),
         shape: const CircleBorder(),
         onPressed: () {
-          // Ride Post স্ক্রিনে যাওয়ার জন্য Navigator যোগ করা হলো
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  const PostARideScreen(), // আপনার ক্লাসের নাম অনুযায়ী পরিবর্তন করে নেবেন
-            ),
+            MaterialPageRoute(builder: (context) => const PostARideScreen()),
           );
         },
         child: const Icon(Icons.add, color: Colors.white, size: 30),
@@ -252,39 +286,37 @@ class HomeScreen extends StatelessWidget {
     final String endLoc = doc['toLocation'] ?? 'Unknown';
     final int seatsLeft = doc['availableSeats'] ?? 0;
 
-    // Vehicle string building ("Black Honda CB")
+    // Vehicle string building
     final String vColor = doc['vehicleColor'] ?? '';
     final String vModel = doc['vehicleModel'] ?? '';
     final String vehicleInfo = "$vColor $vModel".trim();
 
-    // Stops count calculation from Array
+    // Stops count calculation
     final List stopsArray = doc['stops'] ?? [];
     final int stopsCount = stopsArray.length;
 
-    // --- Time Formatting Section Fix ---
+    // --- Time Formatting Section ---
     String formattedTime = 'TBA';
     var departureData = doc['departureTime'];
 
     if (departureData != null) {
       DateTime dt;
       if (departureData is Timestamp) {
-        // যদি Firebase Timestamp হয়
         dt = departureData.toDate();
       } else if (departureData is String) {
-        // যদি ভুল করে String জমা হয়ে থাকে, তাকে DateTime এ কনভার্ট করবে
         dt = DateTime.tryParse(departureData) ?? DateTime.now();
       } else {
         dt = DateTime.now();
       }
-
       formattedTime = DateFormat('dd MMM - h:mm a').format(dt);
     }
 
-    // Driver Info (Since only driverId is in this table, using placeholder for name/rating)
-    // Normally you would fetch driver details using driverId from 'users' collection
-    final String driverName = "Driver";
-    const double rating = 4.8; // Static for now
-    const int totalRides = 15; // Static for now
+    // Driver ID (ফায়ারবেস থেকে নাম আনার জন্য)
+    final String driverId = doc['driverId'] ?? '';
+
+    // Static values for now (যেহেতু রেটিং এবং টোটাল রাইড ফায়ারবেসে নেই)
+    const double rating = 4.8;
+    const int totalRides = 15;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -303,76 +335,132 @@ class HomeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+          // --- Dynamic Header Section with FutureBuilder ---
+          FutureBuilder<QuerySnapshot>(
+            future: driverId.isNotEmpty
+                ? FirebaseFirestore.instance
+                      .collection('users')
+                      .where(
+                        'uid',
+                        isEqualTo: driverId,
+                      ) // users কালেকশনে uid খুঁজবে
+                      .limit(1)
+                      .get()
+                : null,
+            builder: (context, snapshot) {
+              String driverName = "Loading...";
+              String? profilePic;
+
+              if (snapshot.connectionState == ConnectionState.done) {
+                if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                  var userData =
+                      snapshot.data!.docs.first.data() as Map<String, dynamic>;
+                  driverName = userData['fullname'] ?? 'Unknown User';
+                  profilePic = userData['profilePicture'];
+                } else {
+                  driverName = "Not Found";
+                }
+              }
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  CircleAvatar(
-                    backgroundColor: const Color(0xFF1A69FF),
-                    radius: 20,
-                    child: Text(
-                      driverName[0],
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      Text(
-                        "Verified Driver",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      CircleAvatar(
+                        backgroundColor: const Color(0xFF1A69FF),
+                        radius: 20,
+                        backgroundImage: profilePic != null
+                            ? NetworkImage(profilePic)
+                            : null,
+                        child: profilePic == null
+                            ? Text(
+                                driverName.isNotEmpty &&
+                                        driverName != "Loading..." &&
+                                        driverName != "Not Found"
+                                    ? driverName[0]
+                                          .toUpperCase() // নামের প্রথম অক্ষর
+                                    : 'U',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
                       ),
-                      Row(
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.star, color: Colors.orange, size: 14),
-                          SizedBox(width: 4),
-                          Text(
-                            "$rating",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
+                          // --- ইউজারের আসল নাম এবং ভেরিফাইড আইকন ---
+                          Row(
+                            children: [
+                              Text(
+                                driverName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.verified,
+                                color: Colors.blue,
+                                size: 16,
+                              ),
+                            ],
                           ),
-                          Text(
-                            " · $totalRides rides",
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          // --- রেটিং সেকশন ---
+                          const Row(
+                            children: [
+                              Icon(Icons.star, color: Colors.orange, size: 14),
+                              SizedBox(width: 4),
+                              Text(
+                                "$rating",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Text(
+                                " · $totalRides rides",
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ],
                   ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    "৳$price",
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        "৳$price",
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                      const Text(
+                        "per seat",
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
                   ),
-                  const Text(
-                    "per seat",
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
           const SizedBox(height: 16),
 
+          // --- Route Section ---
           Row(
             children: [
               Column(
@@ -422,6 +510,7 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          // --- Info Tags ---
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -438,6 +527,7 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          // --- Action Buttons ---
           Row(
             children: [
               Expanded(
@@ -449,12 +539,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    // ডাটা কনভার্ট করার সেফ (Safe) নিয়ম
-                    Map<String, dynamic> rideDataMap;
-
-                    rideDataMap = doc;
-
-                    // Details স্ক্রিনে নেভিগেট করা
+                    Map<String, dynamic> rideDataMap = doc;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -537,16 +622,23 @@ class HomeScreen extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            // বাকিগুলোতে আপাতত ফাঁকা ফাংশন () {} দেওয়া আছে
             _buildNavItem(Icons.home, "Search", true, () {}),
-            _buildNavItem(Icons.format_list_bulleted, "Rides", false, () {}),
-            const SizedBox(width: 40),
-
+            _buildNavItem(Icons.format_list_bulleted, "Rides", false, () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MyRidesScreen()),
+              );
+            }),
             // Profile এ ক্লিক করলে নেভিগেট হবে
             _buildNavItem(Icons.person_outline, "Profile", false, () {
-              // Direct navigation to profile screen
-              // You can uncomment and use this if you set up named routes
-              // Navigator.pushNamed(context, '/profile');
+              // Profile স্ক্রিনে যাওয়ার জন্য Navigator যোগ করা হলো
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      const ProfileScreen(), // আপনার profile.dart এর ক্লাসের নাম যদি ভিন্ন হয়, তবে সেটা এখানে দিন
+                ),
+              );
             }),
 
             _buildNavItem(Icons.more_horiz, "More", false, () {}),
