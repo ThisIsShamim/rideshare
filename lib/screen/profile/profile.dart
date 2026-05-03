@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rideshare/screen/wallet/wallet.dart'; 
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -8,7 +9,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // এখানে ভেরিয়েবলগুলো রাখা হয়েছে যাতে এডিট করলে ডেটা পরিবর্তন করা যায়
+  
   String userName = 'Arif Hossain';
   String userPhone = '01812345678';
   String userEmail = 'arif.hossain@gmail.com';
@@ -24,7 +25,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _buildProfileHeader(),
             const SizedBox(height: 40),
-            _buildUserInfo(), // এই ফাংশনে এখন ভেরিয়েবল থেকে ডেটা যাবে
+            _buildUserInfo(),
             const SizedBox(height: 20),
             _buildStatsRow(),
             const SizedBox(height: 20),
@@ -32,7 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
             _buildAchievements(),
             const SizedBox(height: 20),
-            _buildMenuItems(),
+            _buildMenuItems(), 
             const SizedBox(height: 100),
           ],
         ),
@@ -121,7 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: Center(
               child: Text(
-                userName.isNotEmpty ? userName[0].toUpperCase() : 'U', // নামের প্রথম অক্ষর দেখাবে
+                userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
                 style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
               ),
             ),
@@ -158,7 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                userName, // ভেরিয়েবল থেকে নাম আসছে
+                userName,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               Row(
@@ -190,11 +191,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Icon(Icons.phone, size: 14, color: Colors.grey[500]),
               const SizedBox(width: 4),
-              Text(userPhone, style: TextStyle(color: Colors.grey[600], fontSize: 12)), // ফোন নম্বর ভেরিয়েবল
+              Text(userPhone, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
               const SizedBox(width: 16),
               Icon(Icons.email, size: 14, color: Colors.grey[500]),
               const SizedBox(width: 4),
-              Text(userEmail, style: TextStyle(color: Colors.grey[600], fontSize: 12)), // ইমেইল ভেরিয়েবল
+              Text(userEmail, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
             ],
           ),
         ],
@@ -349,9 +350,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildMenuItems() {
     return Column(
       children: [
-        _menuItem(Icons.account_balance_wallet_outlined, 'Wallet & Payments', 'Cards, balance & history', Colors.blue),
-        _menuItem(Icons.health_and_safety_outlined, 'Safety & SOS', 'Emergency contacts', Colors.red),
-        _menuItem(Icons.group_outlined, 'Carpool Groups', 'Your groups', Colors.purple),
+        // ওয়ালেট পেজে যাওয়ার নেভিগেশন যোগ করা হলো
+        _menuItem(
+          Icons.account_balance_wallet_outlined, 
+          'Wallet & Payments', 
+          'Cards, balance & history', 
+          Colors.blue,
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const WalletScreen()),
+            );
+          }
+        ),
+        _menuItem(Icons.health_and_safety_outlined, 'Safety & SOS', 'Emergency contacts', Colors.red, () {}),
+        _menuItem(Icons.group_outlined, 'Carpool Groups', 'Your groups', Colors.purple, () {}),
         const SizedBox(height: 20),
         Center(
           child: TextButton.icon(
@@ -364,7 +377,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _menuItem(IconData icon, String title, String subtitle, Color iconColor) {
+  // _menuItem এ onTap প্যারামিটার যোগ করা হয়েছে
+  Widget _menuItem(IconData icon, String title, String subtitle, Color iconColor, VoidCallback onTap) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
@@ -378,7 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-      onTap: () {},
+      onTap: onTap, // এখানে ক্লিক করলে ফাংশনটি কল হবে
     );
   }
 
@@ -477,8 +491,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildBottomSheetMenuItem(
                 icon: Icons.group_outlined, title: 'Carpool Groups', subtitle: 'Join or manage groups', onTap: () {},
               ),
+              // বটম শিটের ওয়ালেট অপশনেও নেভিগেশন যোগ করা হলো
               _buildBottomSheetMenuItem(
-                icon: Icons.account_balance_wallet_outlined, title: 'Wallet', subtitle: 'Balance & transactions', onTap: () {},
+                icon: Icons.account_balance_wallet_outlined, 
+                title: 'Wallet', 
+                subtitle: 'Balance & transactions', 
+                onTap: () {
+                  Navigator.pop(context); // আগে বটম শিটটি বন্ধ করবে
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const WalletScreen()),
+                  );
+                },
               ),
               _buildBottomSheetMenuItem(
                 icon: Icons.health_and_safety_outlined, title: 'Safety & SOS', subtitle: 'Emergency contacts', onTap: () {},
@@ -509,7 +533,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // --- Edit Profile Bottom Sheet ---
   void _showEditProfileBottomSheet() {
-    // বর্তমান ডেটা দিয়ে কন্ট্রোলারগুলো ইনিশিয়ালাইজ করা হচ্ছে
     final TextEditingController nameController = TextEditingController(text: userName);
     final TextEditingController phoneController = TextEditingController(text: userPhone);
     final TextEditingController emailController = TextEditingController(text: userEmail);
@@ -555,13 +578,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // সেভ বাটনে ক্লিক করলে ডেটা আপডেট হবে
                         setState(() {
                           userName = nameController.text;
                           userPhone = phoneController.text;
                           userEmail = emailController.text;
                         });
-                        Navigator.pop(context); // বটম শিট বন্ধ করবে
+                        Navigator.pop(context); 
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue[600],
