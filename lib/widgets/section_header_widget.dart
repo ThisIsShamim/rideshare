@@ -1,4 +1,4 @@
-import '../../../core/app_export.dart';
+import '../core/app_export.dart';
 
 class SectionHeaderWidget extends StatelessWidget {
   final IconData icon;

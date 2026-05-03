@@ -1,24 +1,20 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-// আপনার profile.dart ফাইলটি ইম্পোর্ট করুন
-import 'profile/profile.dart'; 
+import 'login_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Ride Share App',
-      debugShowCheckedModeBanner: false, // ডানদিকের উপরের Debug ব্যানার সরাতে
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      // এখানে home হিসেবে ProfileScreen কে কল করে দিন
-      home: const ProfileScreen(), 
+      debugShowCheckedModeBanner: false,
+      home: LoginScreen(),
     );
   }
 }

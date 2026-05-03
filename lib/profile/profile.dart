@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -8,13 +10,98 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // এখানে ভেরিয়েবলগুলো রাখা হয়েছে যাতে এডিট করলে ডেটা পরিবর্তন করা যায়
-  String userName = 'Arif Hossain';
-  String userPhone = '01812345678';
-  String userEmail = 'arif.hossain@gmail.com';
+  // Firebase থেকে ডেটা রাখার জন্য ভেরিয়েবল
+  String userName = '';
+  String userEmail = '';
+  String userGender = '';
+  String userType = '';
+  String userPhone =
+      ''; // আপনার ডাটাব্যাসে ফোন নম্বর নেই, তাই এটি খালি থাকবে বা আপনি চাইলে পরে যোগ করতে পারেন
+  bool isLoading = true; // ডেটা লোড হওয়ার সময় দেখানোর জন্য
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  // Firebase থেকে ডেটা আনার ফাংশন
+  Future<void> _fetchUserData() async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        // এখানে 'users' হলো আপনার কালেকশনের নাম। যদি অন্য নাম হয়, তাহলে পরিবর্তন করে নেবেন।
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+
+        if (userDoc.exists) {
+          setState(() {
+            Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+            userName = data['fullname'] ?? 'Unknown User';
+            userEmail = data['email'] ?? 'No Email';
+            userGender = data['gender'] ?? 'N/A';
+            userType = data['usertype'] ?? 'User';
+            // যদি আপনার ডাটাবেসে ফোন নম্বর থাকে, তাহলে নিচে যোগ করুন:
+            // userPhone = data['phone'] ?? '';
+            isLoading = false;
+          });
+        } else {
+          setState(() => isLoading = false);
+        }
+      }
+    } catch (e) {
+      print("Error fetching data: $e");
+      setState(() => isLoading = false);
+    }
+  }
+
+  // Firebase এ ডেটা আপডেট করার ফাংশন
+  Future<void> _updateUserData(
+    String newName,
+    String newEmail,
+    String newPhone,
+  ) async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .update({
+              'fullname': newName,
+              'email': newEmail,
+              // 'phone': newPhone, // ডাটাবেসে ফোন নম্বর রাখতে চাইলে আনকমেন্ট করুন
+            });
+
+        setState(() {
+          userName = newName;
+          userEmail = newEmail;
+          userPhone = newPhone;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile updated successfully!')),
+          );
+        }
+      }
+    } catch (e) {
+      print("Error updating data: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // ডেটা লোড হওয়া পর্যন্ত একটি লোডিং স্ক্রিন দেখাবে
+    if (isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _buildAppBar(),
@@ -24,7 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _buildProfileHeader(),
             const SizedBox(height: 40),
-            _buildUserInfo(), // এই ফাংশনে এখন ভেরিয়েবল থেকে ডেটা যাবে
+            _buildUserInfo(),
             const SizedBox(height: 20),
             _buildStatsRow(),
             const SizedBox(height: 20),
@@ -45,7 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _buildBottomNavigationBar(), 
+      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
@@ -61,15 +148,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: Colors.blue[600],
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.directions_car, color: Colors.white, size: 16),
+            child: const Icon(
+              Icons.directions_car,
+              color: Colors.white,
+              size: 16,
+            ),
           ),
           const SizedBox(width: 8),
           RichText(
             text: TextSpan(
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               children: [
-                TextSpan(text: 'Ride', style: TextStyle(color: Colors.blue[900])),
-                const TextSpan(text: 'Share', style: TextStyle(color: Colors.green)),
+                TextSpan(
+                  text: 'Ride',
+                  style: TextStyle(color: Colors.blue[900]),
+                ),
+                const TextSpan(
+                  text: 'Share',
+                  style: TextStyle(color: Colors.green),
+                ),
               ],
             ),
           ),
@@ -80,12 +177,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           icon: const Icon(Icons.notifications_none, color: Colors.black54),
           onPressed: () {},
         ),
-        const Padding(
-          padding: EdgeInsets.only(right: 16.0),
+        Padding(
+          padding: const EdgeInsets.only(right: 16.0),
           child: CircleAvatar(
             radius: 14,
             backgroundColor: Colors.blue,
-            child: Text('A', style: TextStyle(color: Colors.white, fontSize: 14)),
+            child: Text(
+              userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
           ),
         ),
       ],
@@ -121,8 +221,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: Center(
               child: Text(
-                userName.isNotEmpty ? userName[0].toUpperCase() : 'U', // নামের প্রথম অক্ষর দেখাবে
-                style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -131,14 +235,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           bottom: -20,
           right: 32,
           child: OutlinedButton.icon(
-            onPressed: () {
-              _showEditProfileBottomSheet(); 
-            },
+            onPressed: () => _showEditProfileBottomSheet(),
             icon: const Icon(Icons.edit, size: 14, color: Colors.black87),
-            label: const Text('Edit Profile', style: TextStyle(color: Colors.black87, fontSize: 12)),
+            label: const Text(
+              'Edit Profile',
+              style: TextStyle(color: Colors.black87, fontSize: 12),
+            ),
             style: OutlinedButton.styleFrom(
               backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
               minimumSize: const Size(0, 30),
             ),
@@ -158,14 +265,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                userName, // ভেরিয়েবল থেকে নাম আসছে
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                userName,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              Row(
+              const Row(
                 children: [
-                  const Icon(Icons.star, color: Colors.amber, size: 18),
-                  const SizedBox(width: 4),
-                  const Text('5.0', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Icon(Icons.star, color: Colors.amber, size: 18),
+                  SizedBox(width: 4),
+                  Text('5.0', style: TextStyle(fontWeight: FontWeight.bold)),
                 ],
               ),
             ],
@@ -179,22 +289,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: Colors.blue[50],
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text('Student', style: TextStyle(color: Colors.blue[700], fontSize: 12)),
+                child: Text(
+                  userType.isNotEmpty ? userType : 'Student',
+                  style: TextStyle(color: Colors.blue[700], fontSize: 12),
+                ),
               ),
               const SizedBox(width: 8),
-              Text('Male', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              Text(
+                userGender,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(Icons.phone, size: 14, color: Colors.grey[500]),
-              const SizedBox(width: 4),
-              Text(userPhone, style: TextStyle(color: Colors.grey[600], fontSize: 12)), // ফোন নম্বর ভেরিয়েবল
-              const SizedBox(width: 16),
+              if (userPhone.isNotEmpty) ...[
+                Icon(Icons.phone, size: 14, color: Colors.grey[500]),
+                const SizedBox(width: 4),
+                Text(
+                  userPhone,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+                const SizedBox(width: 16),
+              ],
               Icon(Icons.email, size: 14, color: Colors.grey[500]),
               const SizedBox(width: 4),
-              Text(userEmail, style: TextStyle(color: Colors.grey[600], fontSize: 12)), // ইমেইল ভেরিয়েবল
+              Text(
+                userEmail,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
             ],
           ),
         ],
@@ -217,8 +341,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _statItem(Icons.directions_car, Colors.blue, '0', 'Total Rides'),
             _statItem(Icons.star_border, Colors.amber, '5.0', 'Rating'),
-            _statItem(Icons.account_balance_wallet_outlined, Colors.green, '৳0', 'Balance'),
-            _statItem(Icons.military_tech_outlined, Colors.purple, '0', 'Points'),
+            _statItem(
+              Icons.account_balance_wallet_outlined,
+              Colors.green,
+              '৳0',
+              'Balance',
+            ),
+            _statItem(
+              Icons.military_tech_outlined,
+              Colors.purple,
+              '0',
+              'Points',
+            ),
             _statItem(Icons.eco_outlined, Colors.teal, '0kg', 'CO2 Saved'),
           ],
         ),
@@ -231,7 +365,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Icon(icon, color: iconColor, size: 24),
         const SizedBox(height: 8),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
         const SizedBox(height: 2),
         Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 10)),
       ],
@@ -254,14 +391,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(30),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)],
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withAlpha(13), blurRadius: 4),
+                  ],
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.grid_view, size: 16, color: Colors.amber),
                     SizedBox(width: 8),
-                    Text('Overview', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      'Overview',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ],
                 ),
               ),
@@ -294,15 +436,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('ACHIEVEMENTS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black54)),
-              Text('1/6 unlocked', style: TextStyle(color: Colors.blue[600], fontSize: 12, fontWeight: FontWeight.bold)),
+              const Text(
+                'ACHIEVEMENTS',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: Colors.black54,
+                ),
+              ),
+              Text(
+                '1/6 unlocked',
+                style: TextStyle(
+                  color: Colors.blue[600],
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           Stack(
             children: [
-              Container(height: 4, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(2))),
-              Container(width: 50, height: 4, decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(2))),
+              Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Container(
+                width: 50,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -311,12 +480,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
             runSpacing: 20,
             alignment: WrapAlignment.spaceBetween,
             children: [
-              _achievementBadge(Icons.local_taxi, Colors.red[300]!, 'First 5', '5+ rides', false),
-              _achievementBadge(Icons.local_fire_department, Colors.orange[300]!, 'On a Roll', '10+ rides', false),
-              _achievementBadge(Icons.emoji_events, Colors.amber, 'Champion', '50+ rides', false),
-              _achievementBadge(Icons.star, Colors.green, 'Top Rated', '4.5+ rating', true),
-              _achievementBadge(Icons.eco, Colors.teal[300]!, 'Eco Hero', '100kg CO2', false),
-              _achievementBadge(Icons.verified_user, Colors.blue[300]!, 'Verified', 'ID verified', false),
+              _achievementBadge(
+                Icons.local_taxi,
+                Colors.red[300]!,
+                'First 5',
+                '5+ rides',
+                false,
+              ),
+              _achievementBadge(
+                Icons.local_fire_department,
+                Colors.orange[300]!,
+                'On a Roll',
+                '10+ rides',
+                false,
+              ),
+              _achievementBadge(
+                Icons.emoji_events,
+                Colors.amber,
+                'Champion',
+                '50+ rides',
+                false,
+              ),
+              _achievementBadge(
+                Icons.star,
+                Colors.green,
+                'Top Rated',
+                '4.5+ rating',
+                true,
+              ),
+              _achievementBadge(
+                Icons.eco,
+                Colors.teal[300]!,
+                'Eco Hero',
+                '100kg CO2',
+                false,
+              ),
+              _achievementBadge(
+                Icons.verified_user,
+                Colors.blue[300]!,
+                'Verified',
+                'ID verified',
+                false,
+              ),
             ],
           ),
         ],
@@ -324,7 +529,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _achievementBadge(IconData icon, Color color, String title, String subtitle, bool isUnlocked) {
+  Widget _achievementBadge(
+    IconData icon,
+    Color color,
+    String title,
+    String subtitle,
+    bool isUnlocked,
+  ) {
     return SizedBox(
       width: 80,
       child: Column(
@@ -332,15 +543,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isUnlocked ? color.withOpacity(0.1) : Colors.grey[50],
+              color: isUnlocked ? color.withAlpha(25) : Colors.grey[50],
               shape: BoxShape.circle,
               border: Border.all(color: isUnlocked ? color : Colors.grey[200]!),
             ),
-            child: Icon(icon, color: isUnlocked ? color : Colors.grey[300], size: 28),
+            child: Icon(
+              icon,
+              color: isUnlocked ? color : Colors.grey[300],
+              size: 28,
+            ),
           ),
           const SizedBox(height: 8),
-          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isUnlocked ? Colors.black87 : Colors.grey[400]), textAlign: TextAlign.center),
-          Text(subtitle, style: TextStyle(fontSize: 10, color: Colors.grey[400]), textAlign: TextAlign.center),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isUnlocked ? Colors.black87 : Colors.grey[400],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -349,69 +576,108 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildMenuItems() {
     return Column(
       children: [
-        _menuItem(Icons.account_balance_wallet_outlined, 'Wallet & Payments', 'Cards, balance & history', Colors.blue),
-        _menuItem(Icons.health_and_safety_outlined, 'Safety & SOS', 'Emergency contacts', Colors.red),
-        _menuItem(Icons.group_outlined, 'Carpool Groups', 'Your groups', Colors.purple),
+        _menuItem(
+          Icons.account_balance_wallet_outlined,
+          'Wallet & Payments',
+          'Cards, balance & history',
+          Colors.blue,
+        ),
+        _menuItem(
+          Icons.health_and_safety_outlined,
+          'Safety & SOS',
+          'Emergency contacts',
+          Colors.red,
+        ),
+        _menuItem(
+          Icons.group_outlined,
+          'Carpool Groups',
+          'Your groups',
+          Colors.purple,
+        ),
         const SizedBox(height: 20),
         Center(
           child: TextButton.icon(
-            onPressed: () {},
+            onPressed: () {
+              // এখানে Sign out logic যোগ করতে পারেন
+              // FirebaseAuth.instance.signOut();
+            },
             icon: const Icon(Icons.logout, color: Colors.red),
-            label: const Text('Log out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            label: const Text(
+              'Log out',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _menuItem(IconData icon, String title, String subtitle, Color iconColor) {
+  Widget _menuItem(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color iconColor,
+  ) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: iconColor.withOpacity(0.1),
+          color: iconColor.withAlpha(25),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: iconColor),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-      subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+      ),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
       onTap: () {},
     );
   }
 
-  // --- Bottom Navigation Bar Section ---
   Widget _buildBottomNavigationBar() {
     return BottomAppBar(
       color: Colors.white,
       shape: const CircularNotchedRectangle(),
       notchMargin: 8.0,
       child: SizedBox(
-        height: 65, 
+        height: 65,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: <Widget>[
             _buildNavItem(Icons.home_outlined, 'Search', false, () {}),
             _buildNavItem(Icons.list_alt, 'Rides', false, () {}),
-            const SizedBox(width: 48), // Space for the FAB
+            const SizedBox(width: 48),
             _buildNavItem(Icons.person, 'Profile', true, () {}),
-            _buildNavItem(Icons.more_horiz, 'More', false, () {
-              _showMoreBottomSheet(); 
-            }),
+            _buildNavItem(
+              Icons.more_horiz,
+              'More',
+              false,
+              () => _showMoreBottomSheet(),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isSelected, VoidCallback onTap) {
+  Widget _buildNavItem(
+    IconData icon,
+    String label,
+    bool isSelected,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(30),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0), 
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -436,7 +702,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // --- More Features Bottom Sheet ---
   void _showMoreBottomSheet() {
     showModalBottomSheet(
       context: context,
@@ -452,8 +717,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               const SizedBox(height: 12),
               Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
               const SizedBox(height: 16),
               Padding(
@@ -461,12 +730,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('More Features', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'More Features',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     IconButton(
                       icon: Container(
                         padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle),
-                        child: const Icon(Icons.close, color: Colors.black54, size: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.black54,
+                          size: 16,
+                        ),
                       ),
                       onPressed: () => Navigator.pop(context),
                     ),
@@ -475,13 +757,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 8),
               _buildBottomSheetMenuItem(
-                icon: Icons.group_outlined, title: 'Carpool Groups', subtitle: 'Join or manage groups', onTap: () {},
+                icon: Icons.group_outlined,
+                title: 'Carpool Groups',
+                subtitle: 'Join or manage groups',
+                onTap: () {},
               ),
               _buildBottomSheetMenuItem(
-                icon: Icons.account_balance_wallet_outlined, title: 'Wallet', subtitle: 'Balance & transactions', onTap: () {},
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Wallet',
+                subtitle: 'Balance & transactions',
+                onTap: () {},
               ),
               _buildBottomSheetMenuItem(
-                icon: Icons.health_and_safety_outlined, title: 'Safety & SOS', subtitle: 'Emergency contacts', onTap: () {},
+                icon: Icons.health_and_safety_outlined,
+                title: 'Safety & SOS',
+                subtitle: 'Emergency contacts',
+                onTap: () {},
               ),
             ],
           ),
@@ -490,33 +781,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildBottomSheetMenuItem({required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
+  Widget _buildBottomSheetMenuItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.grey[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[200]!),
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[200]!),
         ),
         child: Icon(icon, color: Colors.black87, size: 20),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-      subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+      ),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       onTap: onTap,
     );
   }
 
-  // --- Edit Profile Bottom Sheet ---
   void _showEditProfileBottomSheet() {
-    // বর্তমান ডেটা দিয়ে কন্ট্রোলারগুলো ইনিশিয়ালাইজ করা হচ্ছে
-    final TextEditingController nameController = TextEditingController(text: userName);
-    final TextEditingController phoneController = TextEditingController(text: userPhone);
-    final TextEditingController emailController = TextEditingController(text: userEmail);
+    final TextEditingController nameController = TextEditingController(
+      text: userName,
+    );
+    final TextEditingController phoneController = TextEditingController(
+      text: userPhone,
+    );
+    final TextEditingController emailController = TextEditingController(
+      text: userEmail,
+    );
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, 
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -525,19 +833,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 20, right: 20, top: 20,
+            left: 20,
+            right: 20,
+            top: 20,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Edit Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Edit Profile',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 20),
               _buildTextField(label: 'Full Name', controller: nameController),
               const SizedBox(height: 16),
-              _buildTextField(label: 'Phone Number', controller: phoneController, keyboardType: TextInputType.phone),
+              _buildTextField(
+                label: 'Phone Number',
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+              ),
               const SizedBox(height: 16),
-              _buildTextField(label: 'Email', controller: emailController, keyboardType: TextInputType.emailAddress),
+              _buildTextField(
+                label: 'Email',
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+              ),
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -546,29 +867,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: Colors.black87),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // সেভ বাটনে ক্লিক করলে ডেটা আপডেট হবে
-                        setState(() {
-                          userName = nameController.text;
-                          userPhone = phoneController.text;
-                          userEmail = emailController.text;
-                        });
                         Navigator.pop(context); // বটম শিট বন্ধ করবে
+                        // ডাটাবেসে ডেটা আপডেট করবে
+                        _updateUserData(
+                          nameController.text,
+                          emailController.text,
+                          phoneController.text,
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue[600],
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
+                      child: const Text(
+                        'Save Changes',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
                 ],
@@ -581,11 +912,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildTextField({required String label, required TextEditingController controller, TextInputType keyboardType = TextInputType.text}) {
+  Widget _buildTextField({
+    required String label,
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
@@ -593,7 +935,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey[50],
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(color: Colors.grey[200]!),

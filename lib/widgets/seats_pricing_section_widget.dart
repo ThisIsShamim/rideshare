@@ -1,6 +1,5 @@
-
-import '../../../core/app_export.dart';
-import './section_header_widget.dart';
+import '../core/app_export.dart';
+import 'section_header_widget.dart';
 
 class SeatsPricingSectionWidget extends StatefulWidget {
   final int totalSeats;
@@ -147,7 +146,7 @@ class _SeatsPricingSectionWidgetState extends State<SeatsPricingSectionWidget> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      'in ₦',
+                      'in taka',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -207,7 +206,7 @@ class _SeatsPricingSectionWidgetState extends State<SeatsPricingSectionWidget> {
                           }
                         },
                         decoration: InputDecoration(
-                          prefixText: '₦',
+                          prefixText: 'taka',
                           prefixStyle: GoogleFonts.plusJakartaSans(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -306,7 +305,7 @@ class _SeatsPricingSectionWidgetState extends State<SeatsPricingSectionWidget> {
                         ),
                       ),
                       child: Text(
-                        '₦$price',
+                        '$price taka',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -406,7 +405,7 @@ class _SeatsPricingSectionWidgetState extends State<SeatsPricingSectionWidget> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Set a fair price to attract more riders. Average rides in this area cost ₦60–₦100 per seat.',
+                  'Set a fair price to attract more riders. Average rides in this area cost  60 taka 100 per seat.',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     color: AppTheme.primary,
