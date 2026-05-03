@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:rideshare/screen/wallet/wallet.dart'; 
+import 'package:rideshare/screen/carpool_groups/carpool_groups.dart'; 
+
+import 'package:rideshare/screen/safety_center/safety_center.dart'; 
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -350,7 +353,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildMenuItems() {
     return Column(
       children: [
-        // ওয়ালেট পেজে যাওয়ার নেভিগেশন যোগ করা হলো
         _menuItem(
           Icons.account_balance_wallet_outlined, 
           'Wallet & Payments', 
@@ -363,8 +365,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
             );
           }
         ),
-        _menuItem(Icons.health_and_safety_outlined, 'Safety & SOS', 'Emergency contacts', Colors.red, () {}),
-        _menuItem(Icons.group_outlined, 'Carpool Groups', 'Your groups', Colors.purple, () {}),
+        
+        // ২. Safety Center এ ক্লিক ইভেন্ট যোগ করা হলো
+        _menuItem(
+          Icons.health_and_safety_outlined, 
+          'Safety & SOS', 
+          'Emergency contacts', 
+          Colors.red, 
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SafetyCenterScreen()), // Safety Center Navigation
+            );
+          }
+        ),
+        
+        _menuItem(
+          Icons.group_outlined, 
+          'Carpool Groups', 
+          'Your groups', 
+          Colors.purple, 
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CarpoolGroupsScreen()),
+            );
+          }
+        ),
+
         const SizedBox(height: 20),
         Center(
           child: TextButton.icon(
@@ -377,7 +405,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // _menuItem এ onTap প্যারামিটার যোগ করা হয়েছে
   Widget _menuItem(IconData icon, String title, String subtitle, Color iconColor, VoidCallback onTap) {
     return ListTile(
       leading: Container(
@@ -392,7 +419,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-      onTap: onTap, // এখানে ক্লিক করলে ফাংশনটি কল হবে
+      onTap: onTap,
     );
   }
 
@@ -488,24 +515,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+
               _buildBottomSheetMenuItem(
-                icon: Icons.group_outlined, title: 'Carpool Groups', subtitle: 'Join or manage groups', onTap: () {},
+                icon: Icons.group_outlined, 
+                title: 'Carpool Groups', 
+                subtitle: 'Join or manage groups', 
+                onTap: () {
+                  Navigator.pop(context); 
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CarpoolGroupsScreen()),
+                  );
+                },
               ),
-              // বটম শিটের ওয়ালেট অপশনেও নেভিগেশন যোগ করা হলো
+              
               _buildBottomSheetMenuItem(
                 icon: Icons.account_balance_wallet_outlined, 
                 title: 'Wallet', 
                 subtitle: 'Balance & transactions', 
                 onTap: () {
-                  Navigator.pop(context); // আগে বটম শিটটি বন্ধ করবে
+                  Navigator.pop(context); 
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const WalletScreen()),
                   );
                 },
               ),
+
+              // ৩. বটম শিটের Safety Center অপশনেও নেভিগেশন যোগ করা হলো
               _buildBottomSheetMenuItem(
-                icon: Icons.health_and_safety_outlined, title: 'Safety & SOS', subtitle: 'Emergency contacts', onTap: () {},
+                icon: Icons.health_and_safety_outlined, 
+                title: 'Safety & SOS', 
+                subtitle: 'Emergency contacts', 
+                onTap: () {
+                  Navigator.pop(context); // আগে বটম শিটটি বন্ধ করবে
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SafetyCenterScreen()), // Safety Center Navigation
+                  );
+                },
               ),
             ],
           ),
