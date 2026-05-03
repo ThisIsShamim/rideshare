@@ -21,16 +21,11 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              radius: 14,
-              backgroundColor: Colors.blue[600],
-              child: const Text('A', style: TextStyle(color: Colors.white, fontSize: 14)),
-            ),
-          )
-        ],
+        title: const Text(
+          'Safety Center',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -38,145 +33,162 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Safety Center',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+              'Manage your safety settings and emergency contacts easily.',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Manage your safety settings and emergency\ncontacts',
-              style: TextStyle(fontSize: 14, color: Colors.black54),
-            ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
 
-            // --- Emergency SOS Card ---
+            // --- Emergency SOS Card (Prototype Design) ---
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red[100]!),
-                boxShadow: [
-                  BoxShadow(color: Colors.red.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-                ],
+                color: Colors.red[50], // हल्का লাল ব্যাকগ্রাউন্ড
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red[200]!),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.warning_amber_rounded, color: Colors.red[600], size: 24),
-                      const SizedBox(width: 8),
-                      const Text('Emergency SOS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red)),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.warning_rounded, color: Colors.red[700], size: 40),
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'In case of emergency, press the button below to immediately notify your safety contacts with your real-time location.',
-                    style: TextStyle(fontSize: 12, color: Colors.black87),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Emergency SOS',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red[800]),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Press the button below to immediately notify your emergency contacts and share your live location.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: Colors.red[600], height: 1.4),
+                  ),
+                  const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
+                    height: 50,
+                    child: ElevatedButton(
                       onPressed: () {
-                        // SOS Logic
+                        // SOS Logic here
                       },
-                      icon: const Icon(Icons.notifications_active, color: Colors.white, size: 18),
-                      label: const Text('Press for Emergency SOS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red[600],
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        elevation: 4,
+                        shadowColor: Colors.redAccent.withOpacity(0.5),
+                      ),
+                      child: const Text(
+                        'ACTIVATE SOS',
+                        style: TextStyle(
+                          color: Colors.white, 
+                          fontSize: 16, 
+                          fontWeight: FontWeight.bold, 
+                          letterSpacing: 1.2
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 32),
 
-            // --- Live Location Sharing Card ---
-            _buildSafetyCard(
-              icon: Icons.location_on_outlined,
-              iconColor: Colors.blue,
+            // --- Safety Features Section ---
+            const Text('Safety Features', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+
+            _buildFeatureTile(
+              icon: Icons.location_on,
+              iconBg: Colors.blue[50]!,
+              iconColor: Colors.blue[600]!,
               title: 'Live Location Sharing',
-              subtitle: 'Share your real-time location during rides',
-              actionWidget: ElevatedButton(
+              subtitle: 'Share your trip progress with friends',
+              trailing: ElevatedButton(
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  minimumSize: const Size(0, 32),
                 ),
-                child: const Text('Share Location', style: TextStyle(color: Colors.white, fontSize: 12)),
+                child: const Text('Share', style: TextStyle(color: Colors.white, fontSize: 12)),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
 
-            // --- Arrival Check-in Card ---
-            _buildSafetyCard(
-              icon: Icons.check_circle_outline,
-              iconColor: Colors.green,
+            _buildFeatureTile(
+              icon: Icons.verified_user_rounded,
+              iconBg: Colors.green[50]!,
+              iconColor: Colors.green[600]!,
               title: 'Arrival Check-in',
-              subtitle: 'Notify when you reach safely',
-              actionWidget: Switch(
+              subtitle: 'Auto notify when you reach safely',
+              trailing: Switch(
                 value: isArrivalCheckInEnabled,
+                activeColor: Colors.green,
                 onChanged: (value) {
                   setState(() {
                     isArrivalCheckInEnabled = value;
                   });
                 },
-                activeColor: Colors.green,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 32),
 
-            // --- Emergency Contacts Card ---
+            // --- Emergency Contacts Section ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Emergency Contacts', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                TextButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.add, size: 18, color: Colors.blue),
+                  label: const Text('Add New', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            
+            // Empty State Card for Contacts
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[200]!),
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey[200]!, style: BorderStyle.solid),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Emergency Contacts', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      ElevatedButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.add, size: 14, color: Colors.white),
-                        label: const Text('Add Contact', style: TextStyle(color: Colors.white, fontSize: 12)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                          minimumSize: const Size(0, 30),
-                        ),
-                      ),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.person_off_rounded, color: Colors.grey[500], size: 24),
                   ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'No emergency contacts added yet.\nAdd trusted contacts who will be notified in emergencies.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('No contacts added yet', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Add trusted people to notify them quickly during an emergency.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.3),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 30),
-
-            // --- Safety Tips Section ---
-            const Text('Safety Tips', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _buildSafetyTip('Always verify the driver and vehicle details before getting in.'),
-            _buildSafetyTip('Share your ride details with a trusted friend or family member.'),
-            _buildSafetyTip('Use the "I\'ve reached safely" button to notify your contacts.'),
-            _buildSafetyTip('Trust your instincts. If something feels wrong, don\'t hesitate to cancel.'),
-            _buildSafetyTip('Keep emergency contacts updated and easily accessible.'),
             const SizedBox(height: 30),
           ],
         ),
@@ -184,39 +196,41 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
     );
   }
 
-  Widget _buildSafetyCard({required IconData icon, required Color iconColor, required String title, required String subtitle, required Widget actionWidget}) {
+  // Feature Tile Design Builder
+  Widget _buildFeatureTile({
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required Widget trailing,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: iconColor, size: 32),
-          const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(height: 16),
-          actionWidget,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSafetyTip(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('• ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),
-          Expanded(
-            child: Text(text, style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.01),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: iconBg,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: iconColor, size: 22),
+        ),
+        title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        trailing: trailing,
       ),
     );
   }
