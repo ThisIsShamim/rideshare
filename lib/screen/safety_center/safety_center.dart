@@ -23,7 +23,11 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
         ),
         title: const Text(
           'Safety Center',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
       ),
@@ -54,18 +58,30 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
                       color: Colors.red[100],
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.warning_rounded, color: Colors.red[700], size: 40),
+                    child: Icon(
+                      Icons.warning_rounded,
+                      color: Colors.red[700],
+                      size: 40,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'Emergency SOS',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red[800]),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red[800],
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Press the button below to immediately notify your emergency contacts and share your live location.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Colors.red[600], height: 1.4),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red[600],
+                      height: 1.4,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
@@ -86,10 +102,10 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
                       child: const Text(
                         'ACTIVATE SOS',
                         style: TextStyle(
-                          color: Colors.white, 
-                          fontSize: 16, 
-                          fontWeight: FontWeight.bold, 
-                          letterSpacing: 1.2
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
                         ),
                       ),
                     ),
@@ -100,7 +116,10 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
             const SizedBox(height: 32),
 
             // --- Safety Features Section ---
-            const Text('Safety Features', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Safety Features',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
 
             _buildFeatureTile(
@@ -113,11 +132,19 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 0,
+                  ),
                   minimumSize: const Size(0, 32),
                 ),
-                child: const Text('Share', style: TextStyle(color: Colors.white, fontSize: 12)),
+                child: const Text(
+                  'Share',
+                  style: TextStyle(color: Colors.white, fontSize: 12),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -144,23 +171,35 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Emergency Contacts', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Emergency Contacts',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
                 TextButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.add, size: 18, color: Colors.blue),
-                  label: const Text('Add New', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    'Add New',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            
+
             // Empty State Card for Contacts
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[200]!, style: BorderStyle.solid),
+                border: Border.all(
+                  color: Colors.grey[200]!,
+                  style: BorderStyle.solid,
+                ),
               ),
               child: Row(
                 children: [
@@ -170,18 +209,32 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
                       color: Colors.grey[200],
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.person_off_rounded, color: Colors.grey[500], size: 24),
+                    child: Icon(
+                      Icons.person_off_rounded,
+                      color: Colors.grey[500],
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('No contacts added yet', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'No contacts added yet',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           'Add trusted people to notify them quickly during an emergency.',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.3),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            height: 1.3,
+                          ),
                         ),
                       ],
                     ),
@@ -222,14 +275,17 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: iconBg,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
           child: Icon(icon, color: iconColor, size: 22),
         ),
-        title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
         trailing: trailing,
       ),
     );

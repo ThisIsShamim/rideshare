@@ -16,7 +16,11 @@ class CarpoolGroupsScreen extends StatelessWidget {
         ),
         title: const Text(
           'Carpool Groups',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         centerTitle: false,
         actions: [
@@ -25,7 +29,10 @@ class CarpoolGroupsScreen extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.add, size: 16, color: Colors.white),
-              label: const Text('Create Group', style: TextStyle(color: Colors.white, fontSize: 12)),
+              label: const Text(
+                'Create Group',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
@@ -34,7 +41,7 @@ class CarpoolGroupsScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
               ),
             ),
-          )
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -49,7 +56,10 @@ class CarpoolGroupsScreen extends StatelessWidget {
             const SizedBox(height: 30),
 
             // --- My Groups Section ---
-            const Text('My Groups (0)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'My Groups (0)',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             Container(
               width: double.infinity,
@@ -61,9 +71,16 @@ class CarpoolGroupsScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Icon(Icons.groups_outlined, size: 48, color: Colors.grey[400]),
+                  Icon(
+                    Icons.groups_outlined,
+                    size: 48,
+                    color: Colors.grey[400],
+                  ),
                   const SizedBox(height: 12),
-                  const Text('No groups yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'No groups yet',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     'Join a carpool group to connect with regular commuters',
@@ -75,10 +92,18 @@ class CarpoolGroupsScreen extends StatelessWidget {
                     onPressed: () {},
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                     ),
-                    child: const Text('Create Your First Group', style: TextStyle(color: Colors.white)),
+                    child: const Text(
+                      'Create Your First Group',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
@@ -86,7 +111,10 @@ class CarpoolGroupsScreen extends StatelessWidget {
             const SizedBox(height: 30),
 
             // --- Discover Groups Section ---
-            const Text('Discover Groups', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Discover Groups',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             _buildGroupCard(
               title: 'CSE Department Carpool',
@@ -104,12 +132,35 @@ class CarpoolGroupsScreen extends StatelessWidget {
             const SizedBox(height: 30),
 
             // --- Benefits Section ---
-            const Text('Benefits of Carpool Groups', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Benefits of Carpool Groups',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
-            _buildBenefitItem(Icons.person_outline, Colors.blue, 'Regular Commuters', 'Connect with people who travel the same route regularly.'),
-            _buildBenefitItem(Icons.route_outlined, Colors.green, 'Shared Routes', 'Find rides specifically for your department or area.'),
-            _buildBenefitItem(Icons.lock_outline, Colors.purple, 'Private Groups', 'Create exclusive groups for verified members only.'),
-            _buildBenefitItem(Icons.forum_outlined, Colors.amber, 'Community', 'Build a trusted network of fellow commuters.'),
+            _buildBenefitItem(
+              Icons.person_outline,
+              Colors.blue,
+              'Regular Commuters',
+              'Connect with people who travel the same route regularly.',
+            ),
+            _buildBenefitItem(
+              Icons.route_outlined,
+              Colors.green,
+              'Shared Routes',
+              'Find rides specifically for your department or area.',
+            ),
+            _buildBenefitItem(
+              Icons.lock_outline,
+              Colors.purple,
+              'Private Groups',
+              'Create exclusive groups for verified members only.',
+            ),
+            _buildBenefitItem(
+              Icons.forum_outlined,
+              Colors.amber,
+              'Community',
+              'Build a trusted network of fellow commuters.',
+            ),
             const SizedBox(height: 30),
           ],
         ),
@@ -117,7 +168,12 @@ class CarpoolGroupsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildGroupCard({required String title, required String subtitle, required String location, required String members}) {
+  Widget _buildGroupCard({
+    required String title,
+    required String subtitle,
+    required String location,
+    required String members,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -125,7 +181,11 @@ class CarpoolGroupsScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -136,7 +196,10 @@ class CarpoolGroupsScreen extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: Colors.blue[50], shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  shape: BoxShape.circle,
+                ),
                 child: const Icon(Icons.school, color: Colors.blue, size: 20),
               ),
               const SizedBox(width: 12),
@@ -144,9 +207,18 @@ class CarpoolGroupsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    Text(
+                      subtitle,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
                   ],
                 ),
               ),
@@ -155,13 +227,23 @@ class CarpoolGroupsScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
+              Icon(
+                Icons.location_on_outlined,
+                size: 14,
+                color: Colors.grey[500],
+              ),
               const SizedBox(width: 4),
-              Text(location, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              Text(
+                location,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
               const SizedBox(width: 16),
               Icon(Icons.group_outlined, size: 14, color: Colors.grey[500]),
               const SizedBox(width: 4),
-              Text(members, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              Text(
+                members,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -171,9 +253,17 @@ class CarpoolGroupsScreen extends StatelessWidget {
               onPressed: () {},
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Colors.black),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('Join Group', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Join Group',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
         ],
@@ -181,7 +271,12 @@ class CarpoolGroupsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBenefitItem(IconData icon, Color color, String title, String subtitle) {
+  Widget _buildBenefitItem(
+    IconData icon,
+    Color color,
+    String title,
+    String subtitle,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
@@ -189,7 +284,10 @@ class CarpoolGroupsScreen extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 12),
@@ -197,9 +295,18 @@ class CarpoolGroupsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
               ],
             ),
           ),
