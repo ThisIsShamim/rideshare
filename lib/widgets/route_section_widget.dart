@@ -1,5 +1,9 @@
 import '../map_selection_screen.dart';
 import '../core/app_export.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class RouteSectionWidget extends StatefulWidget {
   final String fromLocation;
@@ -26,6 +30,11 @@ class RouteSectionWidget extends StatefulWidget {
 }
 
 class _RouteSectionWidgetState extends State<RouteSectionWidget> {
+  LatLng? _fromLatLng;
+  LatLng? _toLatLng;
+  String _routeInfoText = ""; // দূরত্ব এবং সময় দেখানোর জন্য
+  bool _isLoadingRoute = false; // এপিআই কল চলার সময় লোডিং দেখানোর জন্য
+
   final _fromController = TextEditingController();
   final _toController = TextEditingController();
   final _stopController = TextEditingController();
@@ -50,12 +59,58 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
     _toController.text = widget.toLocation;
   }
 
-  @override
-  void dispose() {
-    _fromController.dispose();
-    _toController.dispose();
-    _stopController.dispose();
-    super.dispose();
+  Future<void> _calculateDrivingRoute() async {
+    if (_fromLatLng != null && _toLatLng != null) {
+      setState(() {
+        _isLoadingRoute = true;
+        _routeInfoText = "Calculating route...";
+      });
+
+      try {
+        final url = Uri.parse(
+          'https://router.project-osrm.org/route/v1/driving/'
+          '${_fromLatLng!.longitude},${_fromLatLng!.latitude};'
+          '${_toLatLng!.longitude},${_toLatLng!.latitude}'
+          '?overview=false',
+        );
+
+        final response = await http.get(url);
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+
+          if (data['routes'] != null && data['routes'].isNotEmpty) {
+            double distanceInMeters = data['routes'][0]['distance'].toDouble();
+            double durationInSeconds = data['routes'][0]['duration'].toDouble();
+
+            double distanceInKm = distanceInMeters / 1000;
+            int durationInMinutes = (durationInSeconds / 60).round();
+
+            setState(() {
+              _routeInfoText =
+                  "${distanceInKm.toStringAsFixed(2)} km • Est. $durationInMinutes mins";
+              _isLoadingRoute = false;
+            });
+          } else {
+            setState(() {
+              _routeInfoText = "Route not found";
+              _isLoadingRoute = false;
+            });
+          }
+        } else {
+          setState(() {
+            _routeInfoText = "Failed to load route";
+            _isLoadingRoute = false;
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _routeInfoText = "Error calculating route";
+          _isLoadingRoute = false;
+        });
+        debugPrint("OSRM API Error: $e");
+      }
+    }
   }
 
   @override
@@ -78,21 +133,27 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
           prefixColor: const Color(0xFF4CAF50),
           onChanged: widget.onFromChanged,
           onMapTap: () async {
-            // Map Screen-এ নেভিগেট করা
             final selectedPlace = await Navigator.push(
               context,
               MaterialPageRoute(
-                // MapSelectionScreen এর নাম আপনি যা দেবেন সেটা এখানে বসাবেন
                 builder: (context) => const MapSelectionScreen(),
               ),
             );
 
-            // ম্যাপ থেকে অ্যাড্রেস সিলেক্ট করে আনলে সেটা কন্ট্রোলারে বসানো
-            if (selectedPlace != null && selectedPlace is String) {
+            if (selectedPlace != null &&
+                selectedPlace is Map<String, dynamic>) {
+              final String address = selectedPlace['address'] ?? '';
+              final LatLng? location =
+                  selectedPlace['latLng']; // LatLng বের করা হলো
+
               setState(() {
-                _fromController.text = selectedPlace;
+                _fromController.text = address;
+                _fromLatLng = location; // ভ্যারিয়েবলে সেভ করা হলো
               });
-              widget.onFromChanged(selectedPlace);
+              widget.onFromChanged(address);
+
+              // ফাংশন কল করা হলো
+              _calculateDrivingRoute();
             }
           },
         ),
@@ -115,6 +176,7 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
         ),
         const SizedBox(height: 12),
         // --- Dropoff Location Field Update ---
+        // --- Dropoff Location Field Update ---
         _buildLocationField(
           controller: _toController,
           label: 'To (Dropoff Location)',
@@ -122,7 +184,6 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
           prefixColor: const Color(0xFFE53935),
           onChanged: widget.onToChanged,
           onMapTap: () async {
-            // Map Screen-এ নেভিগেট করা
             final selectedPlace = await Navigator.push(
               context,
               MaterialPageRoute(
@@ -130,24 +191,82 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
               ),
             );
 
-            // ম্যাপ থেকে অ্যাড্রেস সিলেক্ট করে আনলে সেটা কন্ট্রোলারে বসানো
-            if (selectedPlace != null && selectedPlace is String) {
+            if (selectedPlace != null &&
+                selectedPlace is Map<String, dynamic>) {
+              final String address = selectedPlace['address'] ?? '';
+              final LatLng? location =
+                  selectedPlace['latLng']; // LatLng বের করা হলো
+
               setState(() {
-                _toController.text = selectedPlace;
+                _toController.text = address;
+                _toLatLng = location; // ভ্যারিয়েবলে সেভ করা হলো
               });
-              widget.onToChanged(selectedPlace);
+              widget.onToChanged(address);
+
+              // ফাংশন কল করা হলো
+              _calculateDrivingRoute();
             }
           },
         ),
         const SizedBox(height: 20),
         Text(
           'Popular Locations',
+
           style: GoogleFonts.plusJakartaSans(
             fontSize: 13,
             fontWeight: FontWeight.w600,
             color: AppTheme.textSecondary,
           ),
         ),
+        if (_routeInfoText.isNotEmpty || _isLoadingRoute) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryContainer, // আপনার থিমের হালকা কালার
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.primary.withAlpha(50)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.directions_car_rounded, color: AppTheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _isLoadingRoute
+                      ? Row(
+                          children: [
+                            SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              "Finding best route...",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          _routeInfoText,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
