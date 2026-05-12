@@ -5,6 +5,7 @@ import 'ride_details_screen.dart';
 import 'ride_post.dart';
 import 'my_rides_screen.dart';
 import 'request_ride/request_ride_screen.dart';
+import 'bookings/book_now.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'fetch_data/user_service.dart';
 
@@ -20,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0; // বর্তমানে কোন ট্যাব সিলেক্টেড তা ট্র্যাক করবে
   String? _userGender;
   bool _isLoadingGender = true;
+  Map<String, dynamic>? _selectedRideData; // Track selected ride
 
   // UserService এর অবজেক্ট তৈরি করা হলো
   final UserService _userService = UserService();
@@ -49,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _isLoadingGender = false);
       }
     } catch (e) {
-      print("Error fetching gender: $e");
+      debugPrint("Error fetching gender: $e");
       setState(() => _isLoadingGender = false);
     }
   }
@@ -99,6 +101,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBodyContent() {
+    // If a ride is selected, show ride details
+    if (_selectedRideData != null) {
+      return _buildRideDetailsContent();
+    }
+
     switch (_selectedIndex) {
       case 0:
         return _buildSearchContent();
@@ -195,6 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemCount: rides.length,
                 itemBuilder: (context, index) {
                   final doc = rides[index].data() as Map<String, dynamic>;
+                  doc['rideId'] = rides[index].id;
                   return _buildRideCard(context, doc);
                 },
               );
@@ -206,55 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMyRidesContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "My Rides",
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('rides')
-                .where(
-                  'userId',
-                  isEqualTo: auth.FirebaseAuth.instance.currentUser?.uid,
-                )
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return const Center(child: Text("Error loading rides"));
-              }
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20.0),
-                    child: Text("You haven't posted any rides yet."),
-                  ),
-                );
-              }
-
-              final rides = snapshot.data!.docs;
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: rides.length,
-                itemBuilder: (context, index) {
-                  final doc = rides[index].data() as Map<String, dynamic>;
-                  return _buildRideCard(context, doc);
-                },
-              );
-            },
-          ),
-        ],
-      ),
-    );
+    return const MyRidesScreen();
   }
 
   Widget _buildRequestsContent() {
@@ -548,7 +508,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: const Color.fromRGBO(255, 255, 255, 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: Colors.white, size: 24),
@@ -570,8 +530,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                  style: const TextStyle(
+                    color: Color.fromRGBO(255, 255, 255, 0.9),
                     fontSize: 11,
                     height: 1.2,
                   ),
@@ -655,357 +615,383 @@ class _HomeScreenState extends State<HomeScreen> {
     const double rating = 4.8;
     const int totalRides = 15;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(13),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Stack(
-          children: [
-            // --- মূল কার্ডের কন্টেন্ট ---
-            Padding(
-              padding: EdgeInsets.fromLTRB(16, isFemaleOnly ? 28 : 16, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- Driver Info Section ---
-                  FutureBuilder<Map<String, String?>>(
-                    future: driverId.isNotEmpty
-                        ? _userService.getDriverInfo(driverId)
-                        : null,
-                    builder: (context, snapshot) {
-                      String driverName = "Loading...";
-                      String? profilePic;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedRideData = doc;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(13),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              // --- মূল কার্ডের কন্টেন্ট ---
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  isFemaleOnly ? 28 : 16,
+                  16,
+                  16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // --- Driver Info Section ---
+                    FutureBuilder<Map<String, String?>>(
+                      future: driverId.isNotEmpty
+                          ? _userService.getDriverInfo(driverId)
+                          : null,
+                      builder: (context, snapshot) {
+                        String driverName = "Loading...";
+                        String? profilePic;
 
-                      if (snapshot.connectionState == ConnectionState.done) {
-                        if (snapshot.hasData && snapshot.data != null) {
-                          driverName = snapshot.data!['name'] ?? 'Unknown User';
-                          profilePic = snapshot.data!['photoUrl'];
-                        } else {
-                          driverName = "Not Found";
+                        if (snapshot.connectionState == ConnectionState.done) {
+                          if (snapshot.hasData && snapshot.data != null) {
+                            driverName =
+                                snapshot.data!['name'] ?? 'Unknown User';
+                            profilePic = snapshot.data!['photoUrl'];
+                          } else {
+                            driverName = "Not Found";
+                          }
                         }
-                      }
 
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: const Color(0xFF1A69FF),
-                                radius: 20,
-                                backgroundImage: profilePic != null
-                                    ? NetworkImage(profilePic)
-                                    : null,
-                                child: profilePic == null
-                                    ? Text(
-                                        driverName.isNotEmpty &&
-                                                driverName != "Loading..." &&
-                                                driverName != "Not Found"
-                                            ? driverName[0].toUpperCase()
-                                            : 'U',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        driverName,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Icon(
-                                        Icons.verified,
-                                        color: Colors.blue,
-                                        size: 16,
-                                      ),
-                                    ],
-                                  ),
-                                  const Row(
-                                    children: [
-                                      Icon(
-                                        Icons.star,
-                                        color: Colors.orange,
-                                        size: 14,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        "$rating",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      Text(
-                                        " · $totalRides rides",
-                                        style: TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                "৳$price",
-                                style: const TextStyle(
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                ),
-                              ),
-                              const Text(
-                                "per seat",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- Location, Stops and Distance Section ---
-                  Row(
-                    children: [
-                      Column(
-                        children: [
-                          const Icon(
-                            Icons.circle,
-                            color: Colors.green,
-                            size: 10,
-                          ),
-                          Container(
-                            height: 20,
-                            width: 2,
-                            color: Colors.grey.shade300,
-                          ),
-                          const Icon(Icons.circle, color: Colors.red, size: 10),
-                        ],
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              startLoc,
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              endLoc,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // ২. ডান দিকে Distance এবং Stops দেখানোর অংশ
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          // --- Distance UI ---
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
+                            Row(
                               children: [
-                                Icon(
-                                  Icons.straighten,
-                                  size: 14,
-                                  color: Colors.blue.shade700,
+                                CircleAvatar(
+                                  backgroundColor: const Color(0xFF1A69FF),
+                                  radius: 20,
+                                  backgroundImage: profilePic != null
+                                      ? NetworkImage(profilePic)
+                                      : null,
+                                  child: profilePic == null
+                                      ? Text(
+                                          driverName.isNotEmpty &&
+                                                  driverName != "Loading..." &&
+                                                  driverName != "Not Found"
+                                              ? driverName[0].toUpperCase()
+                                              : 'U',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        )
+                                      : null,
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          driverName,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(
+                                          Icons.verified,
+                                          color: Colors.blue,
+                                          size: 16,
+                                        ),
+                                      ],
+                                    ),
+                                    const Row(
+                                      children: [
+                                        Icon(
+                                          Icons.star,
+                                          color: Colors.orange,
+                                          size: 14,
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          "$rating",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        Text(
+                                          " · $totalRides rides",
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
                                 Text(
-                                  "$distance km",
-                                  style: TextStyle(
-                                    color: Colors.blue.shade700,
-                                    fontSize: 12,
+                                  "৳$price",
+                                  style: const TextStyle(
+                                    color: Colors.green,
                                     fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                const Text(
+                                  "per seat",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
                             ),
-                          ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
 
-                          // --- Stops UI (যদি থাকে) ---
-                          if (stopsCount > 0) ...[
-                            const SizedBox(height: 8),
+                    // --- Location, Stops and Distance Section ---
+                    Row(
+                      children: [
+                        Column(
+                          children: [
+                            const Icon(
+                              Icons.circle,
+                              color: Colors.green,
+                              size: 10,
+                            ),
+                            Container(
+                              height: 20,
+                              width: 2,
+                              color: Colors.grey.shade300,
+                            ),
+                            const Icon(
+                              Icons.circle,
+                              color: Colors.red,
+                              size: 10,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                startLoc,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                endLoc,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // ২. ডান দিকে Distance এবং Stops দেখানোর অংশ
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            // --- Distance UI ---
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.orange.shade50,
+                                color: Colors.blue.shade50,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Text(
-                                "$stopsCount stops",
-                                style: TextStyle(
-                                  color: Colors.orange.shade700,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.straighten,
+                                    size: 14,
+                                    color: Colors.blue.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "$distance km",
+                                    style: TextStyle(
+                                      color: Colors.blue.shade700,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // --- Stops UI (যদি থাকে) ---
+                            if (stopsCount > 0) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  "$stopsCount stops",
+                                  style: TextStyle(
+                                    color: Colors.orange.shade700,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ],
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- Tags Section ---
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildInfoTag(Icons.access_time, formattedTime),
-                      _buildInfoTag(
-                        Icons.people_outline,
-                        "$seatsLeft seat left",
-                        textColor: const Color(0xFF1A69FF),
-                      ),
-                      _buildInfoTag(Icons.directions_car, vehicleInfo),
-                      if (doc['hasAC'] == true)
-                        _buildInfoTag(Icons.ac_unit, "AC"),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- Action Buttons ---
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () {
-                            Map<String, dynamic> rideDataMap = doc;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    RideDetailsScreen(rideData: rideDataMap),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            "Details >",
-                            style: TextStyle(color: Colors.black87),
-                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1A69FF),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: const Icon(
-                            Icons.book_online,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          label: const Text(
-                            "Book Now",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          onPressed: () {},
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // --- Female Only ট্যাগ (Top-Left) ---
-            if (isFemaleOnly)
-              Positioned(
-                top: 0,
-                left: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFD9E2),
-                    borderRadius: BorderRadius.only(
-                      bottomRight: Radius.circular(12),
+                      ],
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.female, color: Color(0xFFD61E6D), size: 14),
-                      SizedBox(width: 4),
-                      Text(
-                        "Female Only",
-                        style: TextStyle(
-                          color: Color(0xFFD61E6D),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                    const SizedBox(height: 16),
+
+                    // --- Tags Section ---
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _buildInfoTag(Icons.access_time, formattedTime),
+                        _buildInfoTag(
+                          Icons.people_outline,
+                          "$seatsLeft seat left",
+                          textColor: const Color(0xFF1A69FF),
                         ),
-                      ),
-                    ],
-                  ),
+                        _buildInfoTag(Icons.directions_car, vehicleInfo),
+                        if (doc['hasAC'] == true)
+                          _buildInfoTag(Icons.ac_unit, "AC"),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- Action Buttons ---
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () {
+                              Map<String, dynamic> rideDataMap = doc;
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      RideDetailsScreen(rideData: rideDataMap),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              "Details >",
+                              style: TextStyle(color: Colors.black87),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1A69FF),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.book_online,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            label: const Text(
+                              "Book Now",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => BookRideScreen(
+                                    rideId: doc['rideId'] as String,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-          ],
+
+              // --- Female Only ট্যাগ (Top-Left) ---
+              if (isFemaleOnly)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFD9E2),
+                      borderRadius: BorderRadius.only(
+                        bottomRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.female, color: Color(0xFFD61E6D), size: 14),
+                        SizedBox(width: 4),
+                        Text(
+                          "Female Only",
+                          style: TextStyle(
+                            color: Color(0xFFD61E6D),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -1046,35 +1032,453 @@ class _HomeScreenState extends State<HomeScreen> {
       shape: const CircularNotchedRectangle(),
       notchMargin: 8.0,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(
-            Icons.home,
-            "Search",
-            _selectedIndex == 0,
-            () => setState(() => _selectedIndex = 0),
+          Expanded(
+            child: _buildNavItem(
+              Icons.home,
+              "Search",
+              _selectedIndex == 0,
+              () => setState(() => _selectedIndex = 0),
+            ),
           ), // হোম
-          _buildNavItem(
-            Icons.format_list_bulleted,
-            "Rides",
-            _selectedIndex == 1,
-            () => setState(() => _selectedIndex = 1),
+          Expanded(
+            child: _buildNavItem(
+              Icons.format_list_bulleted,
+              "Rides",
+              _selectedIndex == 1,
+              () => setState(() => _selectedIndex = 1),
+            ),
           ),
           const SizedBox(width: 40), // FAB এর ফাঁকা জায়গা
-          _buildNavItem(
-            Icons.inbox_outlined,
-            "Requests",
-            _selectedIndex == 2,
-            () => setState(() => _selectedIndex = 2),
+          Expanded(
+            child: _buildNavItem(
+              Icons.inbox_outlined,
+              "Requests",
+              _selectedIndex == 2,
+              () => setState(() => _selectedIndex = 2),
+            ),
           ),
-          _buildNavItem(
-            Icons.person_outline,
-            "Profile",
-            _selectedIndex == 3,
-            () => setState(() => _selectedIndex = 3),
+          Expanded(
+            child: _buildNavItem(
+              Icons.person_outline,
+              "Profile",
+              _selectedIndex == 3,
+              () => setState(() => _selectedIndex = 3),
+            ),
           ), // প্রোফাইল
         ],
       ),
+    );
+  }
+
+  Widget _buildRideDetailsContent() {
+    if (_selectedRideData == null) {
+      return const Center(child: Text("No ride selected"));
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Back to Search Button
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedRideData = null;
+              });
+            },
+            child: Row(
+              children: const [
+                Icon(Icons.arrow_back, color: Colors.black87),
+                SizedBox(width: 8),
+                Text(
+                  'Back to Search',
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Ride Details Container
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey[300]!),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(10),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildRideDetailsMainSection(),
+                const Divider(height: 1, thickness: 1),
+                _buildRideDetailsDriverSection(),
+                const Divider(height: 1, thickness: 1),
+                _buildRideDetailsVehicleSection(),
+              ],
+            ),
+          ),
+          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRideDetailsMainSection() {
+    final ride = _selectedRideData!;
+    final int price = ride['pricePerSeat'] ?? 0;
+    final String startLoc = ride['fromLocation'] ?? 'Unknown Location';
+    final String endLoc = ride['toLocation'] ?? 'Unknown Location';
+    final int availableSeats = ride['availableSeats'] ?? 0;
+    final bool isFemaleOnly = ride['isFemaleOnly'] ?? false;
+
+    String formattedTime = 'TBA';
+    var departureData = ride['departureTime'];
+    if (departureData != null) {
+      DateTime dt;
+      if (departureData is Timestamp) {
+        dt = departureData.toDate();
+      } else if (departureData is String) {
+        dt = DateTime.tryParse(departureData) ?? DateTime.now();
+      } else {
+        dt = DateTime.now();
+      }
+      formattedTime = DateFormat('dd MMM yyyy, h:mm a').format(dt);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Ride Route",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              if (isFemaleOnly)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.pink.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.pink.shade200),
+                  ),
+                  child: const Text(
+                    "Female Only",
+                    style: TextStyle(
+                      color: Colors.pink,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildRideInfoRow(Icons.my_location, "From", startLoc),
+          const SizedBox(height: 12),
+          _buildRideInfoRow(Icons.location_on, "To", endLoc),
+          const SizedBox(height: 12),
+          _buildRideInfoRow(Icons.access_time, "Departure", formattedTime),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildRideVehicleInfoCol("Price", "৳$price per seat"),
+              _buildRideVehicleInfoCol(
+                "Available Seats",
+                "$availableSeats seats left",
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRideDetailsDriverSection() {
+    final driverId = _selectedRideData!['driverId'] ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Driver Details",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<Map<String, String?>>(
+            future: driverId.isNotEmpty
+                ? _userService.getDriverInfo(driverId)
+                : null,
+            builder: (context, snapshot) {
+              String driverName = "Loading...";
+              String? profilePic;
+
+              if (snapshot.connectionState == ConnectionState.done) {
+                if (snapshot.hasData && snapshot.data != null) {
+                  driverName = snapshot.data!['name'] ?? 'Unknown Driver';
+                  profilePic = snapshot.data!['photoUrl'];
+                } else {
+                  driverName = "Not Found";
+                }
+              }
+
+              return Row(
+                children: [
+                  CircleAvatar(
+                    radius: 25,
+                    backgroundColor: Colors.blue.shade100,
+                    backgroundImage: profilePic != null
+                        ? NetworkImage(profilePic)
+                        : null,
+                    child: profilePic == null
+                        ? Text(
+                            driverName != "Loading..." &&
+                                    driverName != "Not Found"
+                                ? driverName[0].toUpperCase()
+                                : 'U',
+                            style: TextStyle(
+                              color: Colors.blue.shade700,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          driverName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              color: Colors.orange,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              "4.8 (15 reviews)",
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.message, color: Color(0xFF1A69FF)),
+                    onPressed: () {},
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.call, color: Colors.green),
+                    onPressed: () {},
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRideDetailsVehicleSection() {
+    final ride = _selectedRideData!;
+    final String vModel = ride['vehicleModel'] ?? 'Unknown Model';
+    final String vColor = ride['vehicleColor'] ?? 'Unknown Color';
+    final String vPlate = ride['vehiclePlate'] ?? 'Not Provided';
+    final bool hasAC = ride['hasAC'] ?? false;
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Vehicle Details",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final double itemWidth = (constraints.maxWidth - 16) / 3;
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  SizedBox(
+                    width: itemWidth,
+                    child: _buildRideVehicleInfoCol("Model", vModel),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _buildRideVehicleInfoCol("Color", vColor),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _buildRideVehicleInfoCol("AC", hasAC ? "Yes" : "No"),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildRideContactRow(Icons.directions_car, "License Plate: $vPlate"),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A69FF),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BookRideScreen(
+                      rideId: _selectedRideData!['rideId'] as String,
+                    ),
+                  ),
+                );
+              },
+              child: const Text(
+                "Book Now",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRideInfoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: const Color(0xFF1A69FF), size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRideVehicleInfoCol(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRideContactRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFF1A69FF), size: 18),
+        const SizedBox(width: 12),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1237,9 +1641,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withAlpha(26),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withAlpha(77)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
