@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Date format korar jonno
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // UID পাওয়ার জন্য
 
 class RequestRideScreen extends StatefulWidget {
   const RequestRideScreen({super.key});
@@ -11,6 +13,7 @@ class RequestRideScreen extends StatefulWidget {
 class _RequestRideScreenState extends State<RequestRideScreen> {
   int _passengerCount = 1;
   int _maxPrice = 150;
+  final TextEditingController _notesController = TextEditingController();
 
   // State variables for inputs
   final TextEditingController _pickupController = TextEditingController();
@@ -20,6 +23,15 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
 
   final List<int> _priceOptions = [50, 100, 150, 200, 250];
 
+  // dispose মেথডে এটিও অ্যাড করুন
+  @override
+  void dispose() {
+    _pickupController.dispose();
+    _dropoffController.dispose();
+    _notesController.dispose(); // নতুন
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -28,19 +40,76 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
     _dropoffController.addListener(() => setState(() {}));
   }
 
-  @override
-  void dispose() {
-    _pickupController.dispose();
-    _dropoffController.dispose();
-    super.dispose();
-  }
-
   // Validation Check: Pickup, Drop-off, Date, Time shob fill kora ache kina
   bool get _isFormValid {
     return _pickupController.text.trim().isNotEmpty &&
         _dropoffController.text.trim().isNotEmpty &&
         _selectedDate != null &&
         _selectedTime != null;
+  }
+
+  Future<void> _submitRideRequest() async {
+    // ১. বর্তমান ইউজারের UID নেয়া
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please login first!")));
+      return;
+    }
+
+    // লোডিং দেখানো
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final scheduledDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
+      );
+
+      // ২. Firestore-এ ডাটা পাঠানো
+      await FirebaseFirestore.instance.collection('ride_requests').add({
+        'userId': currentUser.uid, // ইউজারের UID এখানে সেভ হবে
+        'pickup_location': _pickupController.text.trim(),
+        'dropoff_location': _dropoffController.text.trim(),
+        'passengers': _passengerCount,
+        'max_price': _maxPrice,
+        'notes': _notesController.text.trim(),
+        'ride_time': Timestamp.fromDate(scheduledDateTime),
+        'status':
+            'pending', // ড্রাইভারা যখন এক্সেপ্ট করবে তখন এটা 'accepted' হবে
+        'created_at': FieldValue.serverTimestamp(),
+
+        // অপশনাল: আপনি চাইলে ইউজারের প্রোফাইল পিক বা নামও এখানে রাখতে পারেন
+        // যাতে ড্রাইভার লিস্টে রিকোয়েস্টটি দেখার সময় সহজে চিনতে পারে।
+      });
+
+      if (!mounted) return;
+      Navigator.pop(context); // ডায়ালগ বন্ধ করা
+
+      // সাকসেস মেসেজ এবং ব্যাক
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Ride Request Sent Successfully!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+    }
   }
 
   // Date aur Time picker funciton
@@ -783,8 +852,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
       child: ElevatedButton.icon(
         onPressed: isValid
             ? () {
-                // TODO: Firebase e request send korar logic ekhane thakbe
-                print("Request Sending...");
+                _submitRideRequest(); // এখানে ফাংশন কল হবে
               }
             : null,
         style: ElevatedButton.styleFrom(

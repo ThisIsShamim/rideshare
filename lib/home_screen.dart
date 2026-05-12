@@ -3,11 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'ride_details_screen.dart';
 import 'ride_post.dart';
-import 'profile/profile.dart';
 import 'my_rides_screen.dart';
 import 'request_ride/request_ride_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
-import 'fetch_data/user_service.dart'; // <-- UserService Import করা হলো
+import 'fetch_data/user_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,9 +17,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _showFilters = true;
+  int _selectedIndex = 0; // বর্তমানে কোন ট্যাব সিলেক্টেড তা ট্র্যাক করবে
   String? _userGender;
   bool _isLoadingGender = true;
-  int _selectedIndex = 0;
 
   // UserService এর অবজেক্ট তৈরি করা হলো
   final UserService _userService = UserService();
@@ -82,95 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: _buildAppBar(),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeaderSection(),
-            _buildActionAndFilterSection(),
-            const SizedBox(height: 10),
-
-            // Female User der jonno special banner
-            if (!_isLoadingGender &&
-                (_userGender == 'female' || _userGender == 'f'))
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 8.0,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.pink.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.pink.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.female, color: Colors.pink, size: 24),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          "Exclusive Female Only Rides are available for you. Check them out!",
-                          style: TextStyle(
-                            color: Colors.pink.shade700,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-            // Real-time Firebase Data List
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('rides')
-                  .where('status', isEqualTo: 'active')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return const Center(child: Text("Error fetching data"));
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20.0),
-                      child: Text("No rides available right now."),
-                    ),
-                  );
-                }
-
-                final rides = snapshot.data!.docs;
-
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  itemCount: rides.length,
-                  itemBuilder: (context, index) {
-                    final doc = rides[index].data() as Map<String, dynamic>;
-                    return _buildRideCard(context, doc);
-                  },
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+      body: _buildBodyContent(),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF1A69FF),
         shape: const CircleBorder(),
@@ -184,6 +95,187 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _buildBottomNav(context),
+    );
+  }
+
+  Widget _buildBodyContent() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildSearchContent();
+      case 1:
+        return _buildMyRidesContent();
+      case 2:
+        return _buildRequestsContent();
+      case 3:
+        return _buildProfileContent();
+      default:
+        return _buildSearchContent();
+    }
+  }
+
+  Widget _buildSearchContent() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeaderSection(),
+          _buildActionAndFilterSection(),
+          const SizedBox(height: 10),
+
+          // Female User der jonno special banner
+          if (!_isLoadingGender &&
+              (_userGender == 'female' || _userGender == 'f'))
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.pink.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.pink.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.female, color: Colors.pink, size: 24),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Exclusive Female Only Rides are available for you. Check them out!",
+                        style: TextStyle(
+                          color: Colors.pink.shade700,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Real-time Firebase Data List
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('rides')
+                .where('status', isEqualTo: 'active')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+              if (snapshot.hasError) {
+                return const Center(child: Text("Error fetching data"));
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Text("No rides available right now."),
+                  ),
+                );
+              }
+
+              final rides = snapshot.data!.docs;
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                itemCount: rides.length,
+                itemBuilder: (context, index) {
+                  final doc = rides[index].data() as Map<String, dynamic>;
+                  return _buildRideCard(context, doc);
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMyRidesContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "My Rides",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('rides')
+                .where(
+                  'userId',
+                  isEqualTo: auth.FirebaseAuth.instance.currentUser?.uid,
+                )
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return const Center(child: Text("Error loading rides"));
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Text("You haven't posted any rides yet."),
+                  ),
+                );
+              }
+
+              final rides = snapshot.data!.docs;
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: rides.length,
+                itemBuilder: (context, index) {
+                  final doc = rides[index].data() as Map<String, dynamic>;
+                  return _buildRideCard(context, doc);
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequestsContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Ride Requests",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Text("No ride requests yet."),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -951,62 +1043,230 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBottomNav(BuildContext context) {
     return BottomAppBar(
-      elevation: 15,
-      shadowColor: Colors.black45,
       shape: const CircularNotchedRectangle(),
       notchMargin: 8.0,
-      color: Colors.white,
-      child: SizedBox(
-        height: 65,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildNavItem(Icons.home, "Search", true, () {}),
-                  _buildNavItem(Icons.format_list_bulleted, "Rides", false, () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MyRidesScreen(),
-                      ),
-                    );
-                  }),
-                ],
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(
+            Icons.home,
+            "Search",
+            _selectedIndex == 0,
+            () => setState(() => _selectedIndex = 0),
+          ), // হোম
+          _buildNavItem(
+            Icons.format_list_bulleted,
+            "Rides",
+            _selectedIndex == 1,
+            () => setState(() => _selectedIndex = 1),
+          ),
+          const SizedBox(width: 40), // FAB এর ফাঁকা জায়গা
+          _buildNavItem(
+            Icons.inbox_outlined,
+            "Requests",
+            _selectedIndex == 2,
+            () => setState(() => _selectedIndex = 2),
+          ),
+          _buildNavItem(
+            Icons.person_outline,
+            "Profile",
+            _selectedIndex == 3,
+            () => setState(() => _selectedIndex = 3),
+          ), // প্রোফাইল
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // নীল রঙের হেডার কার্ড (ইমেজ অনুযায়ী)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2D79FF), Color(0xFF5B42F3)],
               ),
+              borderRadius: BorderRadius.circular(20),
             ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.end,
+            child: Column(
               children: [
-                Text(
-                  'Post',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 10),
+                FutureBuilder<Map<String, dynamic>?>(
+                  future: _userService.getUserData(
+                    auth.FirebaseAuth.instance.currentUser?.uid ?? '',
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.white,
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+
+                    final userData = snapshot.data ?? {};
+                    final userName = userData['name'] ?? 'User';
+                    final userRole = userData['userRole'] ?? 'Member';
+                    final userGender = userData['gender'] ?? 'Not specified';
+
+                    final firstLetter = userName.isNotEmpty
+                        ? userName[0].toUpperCase()
+                        : 'U';
+
+                    return Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: Colors.white,
+                          child: Text(
+                            firstLetter,
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          userName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          "$userRole · $userGender",
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          auth.FirebaseAuth.instance.currentUser?.email ??
+                              'No email',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
-                const SizedBox(height: 4),
               ],
             ),
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildNavItem(Icons.inbox_outlined, "Requests", false, () {}),
-                  _buildNavItem(Icons.person_outline, "Profile", false, () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ProfileScreen(),
+          ),
+          const SizedBox(height: 20),
+
+          // ভেরিফিকেশন কার্ড (অরেঞ্জ এবং ব্লু)
+          _buildVerificationCard(
+            "User Not Verified",
+            "Verify Now",
+            Colors.orange,
+          ),
+          const SizedBox(height: 12),
+          _buildVerificationCard(
+            "Driver Not Verified",
+            "Verify Now",
+            Colors.blue,
+          ),
+
+          const SizedBox(height: 20),
+          // মেনু আইটেম
+          _buildProfileMenuItem(
+            Icons.account_balance_wallet_outlined,
+            "Wallet & Payments",
+          ),
+          _buildProfileMenuItem(Icons.security_outlined, "Safety & SOS"),
+          _buildProfileMenuItem(Icons.group_outlined, "Carpool Groups"),
+
+          const SizedBox(height: 20),
+          // লগআউট বাটন
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                // Show confirmation dialog
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text("Logout"),
+                    content: const Text("Are you sure you want to logout?"),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text("Cancel"),
                       ),
-                    );
-                  }),
-                ],
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          "Logout",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirmed == true) {
+                  await auth.FirebaseAuth.instance.signOut();
+                  if (mounted) {
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil('/', (route) => false);
+                  }
+                }
+              },
+              icon: const Icon(Icons.logout, color: Colors.red),
+              label: const Text("Log out", style: TextStyle(color: Colors.red)),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: Colors.red.shade50,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  // প্রোফাইলের জন্য ছোট হেল্পার ফাংশন
+  Widget _buildVerificationCard(String title, String btnText, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          ),
+          ElevatedButton(
+            onPressed: () {},
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(btnText),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileMenuItem(IconData icon, String title) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.grey.shade700),
+      title: Text(title),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {},
     );
   }
 
