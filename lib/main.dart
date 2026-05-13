@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-
-import 'package:rideshare/screen/profile/profile.dart'; 
+// Apnar folder structure onujayi import path:
+import 'package:rideshare/profile_update/profileupdate.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,12 +12,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Ride Share App',
-      debugShowCheckedModeBanner: false, 
+      debugShowCheckedModeBanner: false,
+      title: 'RideShare App',
       theme: ThemeData(
+        useMaterial3: true,
         primarySwatch: Colors.blue,
       ),
-     
+      // Apnar profileupdate.dart file-e class-er nam "ProfileScreen"
       home: const ProfileScreen(), 
     );
   }
