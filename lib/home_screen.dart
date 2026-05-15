@@ -8,6 +8,7 @@ import 'request_ride/request_ride_screen.dart';
 import 'bookings/book_now.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'fetch_data/user_service.dart';
+import 'profile/profile.dart';
 import 'request_ride/ride_request_details_show.dart'; // Eta add korun
 
 class HomeScreen extends StatefulWidget {
@@ -84,7 +85,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       // Ekhane change kora hoyeche: 2 number tab e appbar dekhabe na
-      appBar: _selectedIndex == 2 ? null : _buildAppBar(),
+      appBar: (_selectedIndex == 2 || _selectedIndex == 3)
+          ? null
+          : _buildAppBar(),
       body: _buildBodyContent(),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF1A69FF),
@@ -116,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2:
         return _buildRequestsContent();
       case 3:
-        return _buildProfileContent();
+        return const ProfileScreen();
       default:
         return _buildSearchContent();
     }
@@ -1486,198 +1489,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildProfileContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // নীল রঙের হেডার কার্ড (ইমেজ অনুযায়ী)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2D79FF), Color(0xFF5B42F3)],
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              children: [
-                FutureBuilder<Map<String, dynamic>?>(
-                  future: _userService.getUserData(
-                    auth.FirebaseAuth.instance.currentUser?.uid ?? '',
-                  ),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const CircleAvatar(
-                        radius: 40,
-                        backgroundColor: Colors.white,
-                        child: CircularProgressIndicator(),
-                      );
-                    }
-
-                    final userData = snapshot.data ?? {};
-                    final userName = userData['name'] ?? 'User';
-                    final userRole = userData['userRole'] ?? 'Member';
-                    final userGender = userData['gender'] ?? 'Not specified';
-
-                    final firstLetter = userName.isNotEmpty
-                        ? userName[0].toUpperCase()
-                        : 'U';
-
-                    return Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: Colors.white,
-                          child: Text(
-                            firstLetter,
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          userName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          "$userRole · $userGender",
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          auth.FirebaseAuth.instance.currentUser?.email ??
-                              'No email',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // ভেরিফিকেশন কার্ড (অরেঞ্জ এবং ব্লু)
-          _buildVerificationCard(
-            "User Not Verified",
-            "Verify Now",
-            Colors.orange,
-          ),
-          const SizedBox(height: 12),
-          _buildVerificationCard(
-            "Driver Not Verified",
-            "Verify Now",
-            Colors.blue,
-          ),
-
-          const SizedBox(height: 20),
-          // মেনু আইটেম
-          _buildProfileMenuItem(
-            Icons.account_balance_wallet_outlined,
-            "Wallet & Payments",
-          ),
-          _buildProfileMenuItem(Icons.security_outlined, "Safety & SOS"),
-          _buildProfileMenuItem(Icons.group_outlined, "Carpool Groups"),
-
-          const SizedBox(height: 20),
-          // লগআউট বাটন
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                // Show confirmation dialog
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text("Logout"),
-                    content: const Text("Are you sure you want to logout?"),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text("Cancel"),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text(
-                          "Logout",
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-
-                if (confirmed == true) {
-                  await auth.FirebaseAuth.instance.signOut();
-                  if (mounted) {
-                    Navigator.of(
-                      context,
-                    ).pushNamedAndRemoveUntil('/', (route) => false);
-                  }
-                }
-              },
-              icon: const Icon(Icons.logout, color: Colors.red),
-              label: const Text("Log out", style: TextStyle(color: Colors.red)),
-              style: OutlinedButton.styleFrom(
-                backgroundColor: Colors.red.shade50,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // প্রোফাইলের জন্য ছোট হেল্পার ফাংশন
-  Widget _buildVerificationCard(String title, String btnText, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withAlpha(26),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withAlpha(77)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
-          ),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: color,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(btnText),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileMenuItem(IconData icon, String title) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.grey.shade700),
-      title: Text(title),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () {},
     );
   }
 
