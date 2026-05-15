@@ -8,6 +8,7 @@ import 'request_ride/request_ride_screen.dart';
 import 'bookings/book_now.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'fetch_data/user_service.dart';
+import 'request_ride/ride_request_details_show.dart'; // Eta add korun
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -82,7 +83,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      appBar: _buildAppBar(),
+      // Ekhane change kora hoyeche: 2 number tab e appbar dekhabe na
+      appBar: _selectedIndex == 2 ? null : _buildAppBar(),
       body: _buildBodyContent(),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF1A69FF),
@@ -218,30 +220,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRequestsContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Ride Requests",
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(20.0),
-              child: Text("No ride requests yet."),
-            ),
-          ),
-        ],
-      ),
-    );
+    // Ekhane apnar notun page ti return kora hocche
+    return const RideRequestDetailsShow();
   }
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       title: Row(
@@ -312,18 +297,40 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 "Find a Ride",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 4),
-              Text(
-                "1 ride available",
-                style: TextStyle(color: Colors.grey, fontSize: 14),
+              const SizedBox(height: 4),
+              // --- Firebase Integration Start ---
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('rides')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return const Text("Error loading rides");
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Text(
+                      "Loading...",
+                      style: TextStyle(fontSize: 12),
+                    );
+                  }
+
+                  // Rides count ber kora
+                  int rideCount = snapshot.data?.docs.length ?? 0;
+
+                  return Text(
+                    "$rideCount ${rideCount <= 1 ? 'ride' : 'rides'} available",
+                    style: const TextStyle(color: Colors.grey, fontSize: 14),
+                  );
+                },
               ),
+              // --- Firebase Integration End ---
             ],
           ),
           Stack(
@@ -357,7 +364,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: const Text(
-                    "2",
+                    "2", // Etao filter count logic diye dynamic kora jabe
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 10,
