@@ -7,8 +7,7 @@ class RideRequestDetailsShow extends StatefulWidget {
   final VoidCallback? onBackPressed;
 
   // ২. কনস্ট্রাকটরে এটি পাস করুন
-  const RideRequestDetailsShow({Key? key, this.onBackPressed})
-    : super(key: key);
+  const RideRequestDetailsShow({super.key, this.onBackPressed});
 
   @override
   State<RideRequestDetailsShow> createState() => _RideRequestDetailsShowState();
@@ -52,12 +51,15 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
                     if (_selectedTabIndex == 0) return true; // All
 
                     String status = doc['status'].toString().toLowerCase();
-                    if (_selectedTabIndex == 1 && status == 'pending')
+                    if (_selectedTabIndex == 1 && status == 'pending') {
                       return true;
-                    if (_selectedTabIndex == 2 && status == 'accepted')
+                    }
+                    if (_selectedTabIndex == 2 && status == 'accepted') {
                       return true;
-                    if (_selectedTabIndex == 3 && status == 'declined')
+                    }
+                    if (_selectedTabIndex == 3 && status == 'declined') {
                       return true;
+                    }
 
                     return false;
                   }).toList();
