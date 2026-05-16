@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rideshare/profile/wallet_screen.dart';
+import 'package:rideshare/profile/verification_dialogs.dart'; // আপনার সঠিক পাথ অনুযায়ী ইমপোর্ট করুন
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -9,23 +12,85 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Data for Searchable Fields
-  final List<String> universities = [
-    "University of Dhaka",
-    "BUET",
-    "Jahangirnagar University",
-    "North South University (NSU)",
-    "BRAC University",
-    "AIUB",
-  ];
+  // Firebase Data Variables
+  String _fullName = "Loading...";
+  String _email = "Loading...";
+  String _gender = "Loading...";
+  String _userType = "User";
+  String _totalRides = "0"; // Dynamically fetched from bookings
+  bool _isLoading = true;
 
-  final List<String> departments = [
-    "Computer Science & Engineering",
-    "Electrical & Electronic Engineering",
-    "BBA",
-    "Mechanical Engineering",
-    "Architecture",
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+    _fetchUserStats();
+  }
+
+  // --- FETCH USER PROFILE DATA ---
+  Future<void> _fetchUserData() async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+
+        if (userDoc.exists) {
+          Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+          setState(() {
+            _fullName = data['fullname'] ?? "Unknown User";
+            _email = data['email'] ?? "No email provided";
+            _gender = data['gender'] ?? "N/A";
+            _userType = data['usertype'] ?? "User";
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _fullName = "User Not Found";
+            _isLoading = false;
+          });
+        }
+      } else {
+        setState(() {
+          _fullName = "Not Logged In";
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Error fetching user data: $e");
+      setState(() {
+        _fullName = "Error loading data";
+        _isLoading = false;
+      });
+    }
+  }
+
+  // --- FETCH USER TOTAL RIDES ---
+  Future<void> _fetchUserStats() async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        // এখানে bookings এর বদলে rides কালেকশন এবং uid এর বদলে driverId দেওয়া হয়েছে
+        QuerySnapshot rideSnapshot = await FirebaseFirestore.instance
+            .collection('rides') // আপনার ডাটাবেজ অনুযায়ী কালেকশন নাম (rides)
+            .where(
+              'driverId',
+              isEqualTo: currentUser.uid,
+            ) // আপনার ফিল্ডের নাম (driverId)
+            .get();
+
+        if (mounted) {
+          setState(() {
+            _totalRides = rideSnapshot.docs.length.toString();
+          });
+        }
+      }
+    } catch (e) {
+      print("Error fetching total rides: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
 
                   // --- VERIFICATION CARDS ---
+                  // --- VERIFICATION CARDS IN PROFILE.DART ---
                   _buildVerifyCard(
                     context,
                     "User Not Verified",
@@ -50,7 +116,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const Color(0xFFF2994A),
                     const Color(0xFFFFF7EE),
                     Icons.error,
-                    onTap: () => _showUserVerificationDialog(context),
+                    onTap: () => VerificationDialogs.showUserVerification(
+                      context,
+                    ), // এখানে কল করুন
                   ),
                   const SizedBox(height: 12),
                   _buildVerifyCard(
@@ -60,9 +128,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const Color(0xFF2F80ED),
                     const Color(0xFFF4F8FF),
                     Icons.directions_car,
-                    onTap: () => _showDriverVerificationDialog(context),
+                    onTap: () => VerificationDialogs.showDriverVerification(
+                      context,
+                    ), // এখানে কল করুন
                   ),
-
                   const SizedBox(height: 24),
                   const Text(
                     "Quick Actions",
@@ -107,7 +176,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _statCol(
-                          "0",
+                          _totalRides, // Dynamically loaded total rides
                           "Total Rides",
                           Icons.directions_car,
                           const Color(0xFF2F80ED),
@@ -236,12 +305,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
 
                   const SizedBox(height: 24),
-                  _buildMenuSection(context), // context pass kora hoyeche
+                  _buildMenuSection(context),
 
                   const SizedBox(height: 30),
                   Center(
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        await FirebaseAuth.instance.signOut();
+                        // Navigate to login screen if necessary
+                      },
                       child: const Text(
                         "Logout",
                         style: TextStyle(
@@ -302,7 +374,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // --- UPDATED MENU TILE WITH ONTAP ---
   Widget _menuTile(
     IconData icon,
     String title,
@@ -341,216 +412,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showUserVerificationDialog(BuildContext context) {
-    TextEditingController uniController = TextEditingController();
-    TextEditingController deptController = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.85,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 12,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  const Icon(
-                    Icons.shield_outlined,
-                    color: Color(0xFF2F80ED),
-                    size: 40,
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    "User Verification Required",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildFieldLabel("I am a *"),
-                  _buildDropdownField("Select your role"),
-                  const SizedBox(height: 16),
-                  _buildFieldLabel("University *"),
-                  _buildSearchableInput(
-                    controller: uniController,
-                    hint: "Search your university...",
-                    items: universities,
-                    onChanged: () => setModalState(() {}),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildFieldLabel("Department *"),
-                  _buildSearchableInput(
-                    controller: deptController,
-                    hint: "Search your department...",
-                    items: departments,
-                    onChanged: () => setModalState(() {}),
-                  ),
-                  const SizedBox(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: (uniController.text.isNotEmpty)
-                            ? const Color(0xFF2F80ED)
-                            : const Color(0xFFBDBDBD),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "Continue",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showDriverVerificationDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 12,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF4F8FF),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.directions_car_filled_rounded,
-                  color: Color(0xFF2F80ED),
-                  size: 30,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                "Driver Verification",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF333333),
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                "Complete verification to start posting rides",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Color(0xFF828282)),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF4F8FF),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Why Driver Verification?",
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2F80ED),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildCheckItem("Ensures passenger safety"),
-                    _buildCheckItem("Builds trust in the community"),
-                    _buildCheckItem("Prevents fraud and scams"),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildFieldLabel("Required Documents:"),
-              _buildBulletItem("Valid Driving License"),
-              _buildBulletItem("National ID Card (NID)"),
-              _buildBulletItem("Vehicle Registration (BRTA)"),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D1724),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    "Start Verification",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildCheckItem(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -572,6 +433,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildFigmaHeader(BuildContext context) {
+    // Generate avatar initial dynamically
+    String initial =
+        _fullName.isNotEmpty &&
+            _fullName != "Loading..." &&
+            _fullName != "Error loading data"
+        ? _fullName[0].toUpperCase()
+        : "U";
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -601,166 +470,180 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ],
               ),
-              child: Column(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Transform.translate(
-                        offset: const Offset(0, -35),
-                        child: Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2F80ED),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white, width: 3),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              "A",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF2F80ED),
                       ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFF2F2F2)),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: const [
-                            Icon(
-                              Icons.edit_outlined,
-                              size: 12,
-                              color: Color(0xFF828282),
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              "Edit Profile",
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Color(0xFF4F4F4F),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  Transform.translate(
-                    offset: const Offset(0, -15),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    )
+                  : Column(
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              "Arif Hossain",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 18,
-                                color: Color(0xFF333333),
-                              ),
-                            ),
-                            Row(
-                              children: const [
-                                Icon(
-                                  Icons.star,
-                                  color: Color(0xFFF2C94C),
-                                  size: 16,
-                                ),
-                                Text(
-                                  " 5.0",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                            Transform.translate(
+                              offset: const Offset(0, -35),
+                              child: Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2F80ED),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 3,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2F80ED).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                "Student",
-                                style: TextStyle(
-                                  color: Color(0xFF2F80ED),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
+                                child: Center(
+                                  child: Text(
+                                    initial,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              "Male",
-                              style: TextStyle(
-                                color: Color(0xFF828282),
-                                fontSize: 11,
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: const Color(0xFFF2F2F2),
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                children: const [
+                                  Icon(
+                                    Icons.edit_outlined,
+                                    size: 12,
+                                    color: Color(0xFF828282),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    "Edit Profile",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Color(0xFF4F4F4F),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: const [
-                            Icon(
-                              Icons.phone_outlined,
-                              size: 14,
-                              color: Color(0xFFBDBDBD),
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              "01312345678",
-                              style: TextStyle(
-                                color: Color(0xFF828282),
-                                fontSize: 10,
+                        Transform.translate(
+                          offset: const Offset(0, -15),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _fullName, // Dynamically loaded name
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 18,
+                                      color: Color(0xFF333333),
+                                    ),
+                                  ),
+                                  Row(
+                                    children: const [
+                                      Icon(
+                                        Icons.star,
+                                        color: Color(0xFFF2C94C),
+                                        size: 16,
+                                      ),
+                                      Text(
+                                        " 5.0",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ),
-                            SizedBox(width: 12),
-                            Icon(
-                              Icons.email_outlined,
-                              size: 14,
-                              color: Color(0xFFBDBDBD),
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              "arif.hossain@gmail.com",
-                              style: TextStyle(
-                                color: Color(0xFF828282),
-                                fontSize: 10,
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFF2F80ED,
+                                      ).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      _userType, // Dynamically loaded usertype
+                                      style: const TextStyle(
+                                        color: Color(0xFF2F80ED),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _gender, // Dynamically loaded gender
+                                    style: const TextStyle(
+                                      color: Color(0xFF828282),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.phone_outlined,
+                                    size: 14,
+                                    color: Color(0xFFBDBDBD),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Text(
+                                    "01312345678",
+                                    style: TextStyle(
+                                      color: Color(0xFF828282),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Icon(
+                                    Icons.email_outlined,
+                                    size: 14,
+                                    color: Color(0xFFBDBDBD),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _email, // Dynamically loaded email
+                                    style: const TextStyle(
+                                      color: Color(0xFF828282),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),
@@ -886,19 +769,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // --- UPDATED FIELD LABEL (লাল স্টার * সাপোর্ট করার জন্য) ---
   Widget _buildFieldLabel(String label) {
+    bool hasAsterisk = label.contains('*');
+    String text = label.replaceAll('*', '').trim();
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF333333),
+        child: RichText(
+          text: TextSpan(
+            text: text,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF333333),
+              fontFamily: 'Roboto', // আপনার অ্যাপের ফন্ট দিন
+            ),
+            children: hasAsterisk
+                ? [
+                    const TextSpan(
+                      text: ' *',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ]
+                : [],
           ),
         ),
+      ),
+    );
+  }
+
+  // --- NEW: ব্লু চেকলিস্ট আইটেম তৈরি করার জন্য ---
+  Widget _buildCheckItemBlue(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          const Icon(Icons.check, size: 14, color: Color(0xFF2F80ED)),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 11, color: Color(0xFF2F80ED)),
+          ),
+        ],
       ),
     );
   }
