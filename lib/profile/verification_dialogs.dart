@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class VerificationDialogs {
   // --- বিশাল ইউনিভার্সিটির লিস্ট ---
   static final List<String> universities = [
-    // --- Public Universities ---
+    // Public Universities
     "University of Dhaka (DU)",
     "Bangladesh University of Engineering and Technology (BUET)",
     "Jahangirnagar University (JU)",
@@ -38,7 +38,7 @@ class VerificationDialogs {
     "National University, Bangladesh (NU)",
     "Bangladesh Open University (BOU)",
 
-    // --- Private Universities ---
+    // Private Universities
     "North South University (NSU)",
     "BRAC University (BRACU)",
     "American International University-Bangladesh (AIUB)",
@@ -79,7 +79,7 @@ class VerificationDialogs {
     "European University of Bangladesh (EUB)",
     "BGMEA University of Fashion & Technology (BUFT)",
 
-    // --- Medical Colleges ---
+    // Medical Colleges
     "Dhaka Medical College (DMC)",
     "Sir Salimullah Medical College (SSMC)",
     "Shaheed Suhrawardy Medical College (ShSMC)",
@@ -200,7 +200,6 @@ class VerificationDialogs {
                     const SizedBox(height: 16),
 
                     _buildFieldLabel("University *"),
-                    // --- নতুন বটম শিট সিলেক্টর ---
                     _buildBottomSheetSelector(
                       hint: "Select your university",
                       value: uniController.text,
@@ -217,7 +216,6 @@ class VerificationDialogs {
                     const SizedBox(height: 16),
 
                     _buildFieldLabel("Department *"),
-                    // --- ডিপার্টমেন্টের জন্যও একই বটম শিট সিলেক্টর ---
                     _buildBottomSheetSelector(
                       hint: "Select your department",
                       value: deptController.text,
@@ -385,7 +383,7 @@ class VerificationDialogs {
     );
   }
 
-  // Role Dropdown (Student, Faculty etc)
+  // --- UPDATED: Role Dropdown (Student, Faculty etc) ---
   static Widget _buildRoleDropdown({
     required String? value,
     required String hint,
@@ -397,22 +395,36 @@ class VerificationDialogs {
       {'icon': '👔', 'title': 'Staff Member'},
     ];
 
+    bool isSelected = value != null;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF9FAFC),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFF2F2F2)),
+        border: Border.all(
+          // সিলেক্ট হলে বর্ডারটা হালকা নীল হবে (একটু ফোকাসড দেখানোর জন্য)
+          color: isSelected
+              ? const Color(0xFF2F80ED).withOpacity(0.3)
+              : const Color(0xFFF2F2F2),
+        ),
       ),
       height: 50,
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Color(0xFFBDBDBD),
-          ),
+          // --- এখানে আইকন চেঞ্জ করার লজিক দেওয়া হয়েছে ---
+          icon: isSelected
+              ? const Icon(
+                  Icons.check_circle,
+                  color: Color(0xFF219653),
+                  size: 20,
+                ) // সবুজ চেকমার্ক
+              : const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: Color(0xFFBDBDBD),
+                ), // নরমাল অ্যারো
           hint: Text(
             hint,
             style: const TextStyle(fontSize: 13, color: Color(0xFFBDBDBD)),
@@ -428,9 +440,12 @@ class VerificationDialogs {
                   const SizedBox(width: 10),
                   Text(
                     role['title']!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF333333),
+                      color: const Color(0xFF333333),
+                      fontWeight: isSelected
+                          ? FontWeight.w500
+                          : FontWeight.normal,
                     ),
                   ),
                 ],
@@ -443,12 +458,14 @@ class VerificationDialogs {
     );
   }
 
-  // --- নতুন: মেইন ডায়ালগে ইনপুট ফিল্ডের মতো দেখতে উইজেট ---
+  // --- UPDATED: Bottom Sheet Selector ---
   static Widget _buildBottomSheetSelector({
     required String hint,
     required String value,
     required VoidCallback onTap,
   }) {
+    bool isSelected = value.isNotEmpty;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -456,7 +473,12 @@ class VerificationDialogs {
         decoration: BoxDecoration(
           color: const Color(0xFFF9FAFC),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFF2F2F2)),
+          border: Border.all(
+            // সিলেক্ট হলে বর্ডারটা হালকা নীল হবে
+            color: isSelected
+                ? const Color(0xFF2F80ED).withOpacity(0.3)
+                : const Color(0xFFF2F2F2),
+          ),
         ),
         height: 50,
         child: Row(
@@ -464,27 +486,37 @@ class VerificationDialogs {
           children: [
             Expanded(
               child: Text(
-                value.isNotEmpty ? value : hint,
+                isSelected ? value : hint,
                 style: TextStyle(
                   fontSize: 13,
-                  color: value.isNotEmpty
+                  color: isSelected
                       ? const Color(0xFF333333)
                       : const Color(0xFFBDBDBD),
+                  fontWeight: isSelected
+                      ? FontWeight.w500
+                      : FontWeight.normal, // সিলেক্ট হলে একটু বোল্ড হবে
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: Color(0xFFBDBDBD),
-            ),
+            // --- এখানে আইকন চেঞ্জ করার লজিক ---
+            isSelected
+                ? const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF219653),
+                    size: 20,
+                  ) // সবুজ চেকমার্ক
+                : const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Color(0xFFBDBDBD),
+                  ), // নরমাল অ্যারো
           ],
         ),
       ),
     );
   }
 
-  // --- নতুন: ছবির মতো হুবহু সার্চ বটম শিট ফাংশন ---
+  // Search Bottom Sheet (একই থাকছে)
   static void _showSearchBottomSheet({
     required BuildContext context,
     required String title,
@@ -503,9 +535,7 @@ class VerificationDialogs {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return Container(
-              height:
-                  MediaQuery.of(context).size.height *
-                  0.85, // স্ক্রিনের ৮৫% জায়গা নিবে
+              height: MediaQuery.of(context).size.height * 0.85,
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -513,7 +543,6 @@ class VerificationDialogs {
               child: Column(
                 children: [
                   const SizedBox(height: 12),
-                  // উপরের গ্রে হ্যান্ডেল
                   Container(
                     width: 40,
                     height: 4,
@@ -523,16 +552,12 @@ class VerificationDialogs {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Title & Close Button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const SizedBox(
-                          width: 24,
-                        ), // ব্যালেন্স করার জন্য ফাঁকা জায়গা
+                        const SizedBox(width: 24),
                         Text(
                           title,
                           style: const TextStyle(
@@ -553,8 +578,6 @@ class VerificationDialogs {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Search Box (ছবির মতো)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: TextField(
@@ -601,8 +624,6 @@ class VerificationDialogs {
                     ),
                   ),
                   const SizedBox(height: 10),
-
-                  // List View with Dividers (ছবির মতো)
                   Expanded(
                     child: ListView.separated(
                       padding: EdgeInsets.zero,
@@ -622,10 +643,9 @@ class VerificationDialogs {
                             ),
                           ),
                           onTap: () {
-                            mainController.text =
-                                filteredItems[index]; // ভ্যালু সেট হবে
-                            onSelected(); // মেইন ডায়ালগ আপডেট হবে
-                            Navigator.pop(context); // বটম শিট ক্লোজ হবে
+                            mainController.text = filteredItems[index];
+                            onSelected();
+                            Navigator.pop(context);
                           },
                         );
                       },
