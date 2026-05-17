@@ -3,6 +3,10 @@ import 'package:intl/intl.dart'; // Date format korar jonno
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // UID পাওয়ার জন্য
 
+// আপনার MapSelectionScreen-এর সঠিক ইম্পোর্ট পাথটি দিন
+import '../map_selection_screen.dart';
+import '../price_calculator_service.dart';
+
 class RequestRideScreen extends StatefulWidget {
   const RequestRideScreen({super.key});
 
@@ -21,14 +25,16 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
 
+  String _distanceStr = ""; // ম্যাপ থেকে পাওয়া দূরত্ব রাখার জন্য (ঐচ্ছিক)
+  String _durationStr = ""; // ম্যাপ থেকে পাওয়া সময় রাখার জন্য (ঐচ্ছিক)
+
   final List<int> _priceOptions = [50, 100, 150, 200, 250];
 
-  // dispose মেথডে এটিও অ্যাড করুন
   @override
   void dispose() {
     _pickupController.dispose();
     _dropoffController.dispose();
-    _notesController.dispose(); // নতুন
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -48,8 +54,79 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
         _selectedTime != null;
   }
 
+  // --- নতুন মেথড: Map স্ক্রিন থেকে পুরো জার্নির ডেটা ফেচ করা এবং প্রাইস ক্যালকুলেট করা ---
+  Future<void> _pickJourneyLocations() async {
+    final journeyData = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const MapSelectionScreen()),
+    );
+
+    if (journeyData != null && journeyData is Map<String, dynamic>) {
+      setState(() {
+        _pickupController.text = journeyData['pickup_address'] ?? '';
+        _dropoffController.text = journeyData['dropoff_address'] ?? '';
+
+        _distanceStr = journeyData['distance'] ?? '';
+        _durationStr = journeyData['duration'] ?? '';
+      });
+
+      // --- স্মার্ট প্রাইস ক্যালকুলেশন ---
+      try {
+        // String থেকে শুধু নাম্বার বের করা (যেমন: "5.4 km" -> 5.4)
+        double distKm =
+            double.tryParse(
+              journeyData['distance'].toString().replaceAll(
+                RegExp(r'[^0-9.]'),
+                '',
+              ),
+            ) ??
+            0.0;
+
+        // String থেকে শুধু নাম্বার বের করা (যেমন: "15 mins" -> 15.0)
+        double durMin =
+            double.tryParse(
+              journeyData['duration'].toString().replaceAll(
+                RegExp(r'[^0-9.]'),
+                '',
+              ),
+            ) ??
+            0.0;
+
+        // ম্যাপ স্ক্রিন থেকে ল্যাট-লং না পেলে ডিফল্ট ঢাকার লোকেশন ব্যবহার করবে
+        double lat = journeyData['pickup_lat'] ?? 23.8103;
+        double lng = journeyData['pickup_lng'] ?? 90.4125;
+
+        // প্রাইস ক্যালকুলেটর সার্ভিস কল করা
+        int smartPrice = await PriceCalculatorService.calculateSmartPrice(
+          distanceKm: distKm,
+          durationMins: durMin,
+          pickupLat: lat,
+          pickupLng: lng,
+        );
+
+        // ক্যালকুলেট করা প্রাইস UI তে আপডেট করা
+        setState(() {
+          _maxPrice = smartPrice; // _maxPrice আপডেট হয়ে যাবে
+        });
+
+        // ইউজারকে একটি মেসেজ দেখানো
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Price adjusted to ৳$_maxPrice based on route and weather!",
+              ),
+              backgroundColor: Colors.blueAccent,
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint("Error calculating smart price: $e");
+      }
+    }
+  }
+
   Future<void> _submitRideRequest() async {
-    // ১. বর্তমান ইউজারের UID নেয়া
     final User? currentUser = FirebaseAuth.instance.currentUser;
 
     if (currentUser == null) {
@@ -59,7 +136,6 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
       return;
     }
 
-    // লোডিং দেখানো
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -75,27 +151,23 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
         _selectedTime!.minute,
       );
 
-      // ২. Firestore-এ ডাটা পাঠানো
       await FirebaseFirestore.instance.collection('ride_requests').add({
-        'userId': currentUser.uid, // ইউজারের UID এখানে সেভ হবে
+        'userId': currentUser.uid,
         'pickup_location': _pickupController.text.trim(),
         'dropoff_location': _dropoffController.text.trim(),
+        'distance': _distanceStr, // ডেটাবেসে দূরত্ব সেভ করা হচ্ছে
+        'duration': _durationStr, // ডেটাবেসে সময় সেভ করা হচ্ছে
         'passengers': _passengerCount,
         'max_price': _maxPrice,
         'notes': _notesController.text.trim(),
         'ride_time': Timestamp.fromDate(scheduledDateTime),
-        'status':
-            'pending', // ড্রাইভারা যখন এক্সেপ্ট করবে তখন এটা 'accepted' হবে
+        'status': 'pending',
         'created_at': FieldValue.serverTimestamp(),
-
-        // অপশনাল: আপনি চাইলে ইউজারের প্রোফাইল পিক বা নামও এখানে রাখতে পারেন
-        // যাতে ড্রাইভার লিস্টে রিকোয়েস্টটি দেখার সময় সহজে চিনতে পারে।
       });
 
       if (!mounted) return;
       Navigator.pop(context); // ডায়ালগ বন্ধ করা
 
-      // সাকসেস মেসেজ এবং ব্যাক
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Ride Request Sent Successfully!"),
@@ -112,7 +184,6 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
     }
   }
 
-  // Date aur Time picker funciton
   Future<void> _pickDateTime() async {
     DateTime? date = await showDatePicker(
       context: context,
@@ -138,7 +209,6 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      // Home Screen er moto same AppBar
       appBar: _buildAppBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -149,7 +219,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
             const SizedBox(height: 16),
             _buildInfoBanner(),
             const SizedBox(height: 20),
-            _buildJourneyCard(),
+            _buildJourneyCard(), // Updated Journey Card
             const SizedBox(height: 16),
             _buildDateTimeAndPassengerCard(),
             const SizedBox(height: 16),
@@ -157,24 +227,17 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
             const SizedBox(height: 16),
             _buildNotesCard(),
             const SizedBox(height: 20),
-
-            // Updated Summary Box
             _buildRequestSummary(),
             const SizedBox(height: 16),
-
-            // Send Request Button (Condition Applied)
             _buildSendRequestButton(),
-
-            const SizedBox(height: 40), // For bottom spacing
+            const SizedBox(height: 40),
           ],
         ),
       ),
-      // Home Screen er moto same Floating Action Button aur Bottom Nav
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF1A69FF),
         shape: const CircleBorder(),
         onPressed: () {
-          // Home page e back korar jonno
           Navigator.pop(context);
         },
         child: const Icon(Icons.home, color: Colors.white, size: 30),
@@ -184,13 +247,12 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
     );
   }
 
-  // --- Same AppBar as Home Screen ---
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
-      automaticallyImplyLeading: false, // Default back button hide kora hoyeche
+      automaticallyImplyLeading: false,
       title: Row(
         children: [
           Container(
@@ -253,7 +315,6 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
     );
   }
 
-  // --- Same Bottom Nav as Home Screen ---
   Widget _buildBottomNav(BuildContext context) {
     return BottomAppBar(
       elevation: 15,
@@ -271,11 +332,14 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildNavItem(Icons.home, "Search", false, () {
-                    Navigator.pop(context); // Home e jabe
+                    Navigator.pop(context);
                   }),
-                  _buildNavItem(Icons.format_list_bulleted, "Rides", false, () {
-                    // Rides route e jabe
-                  }),
+                  _buildNavItem(
+                    Icons.format_list_bulleted,
+                    "Rides",
+                    false,
+                    () {},
+                  ),
                 ],
               ),
             ),
@@ -294,15 +358,8 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildNavItem(
-                    Icons.inbox_outlined,
-                    "Requests",
-                    true,
-                    () {},
-                  ), // Currently in Request page
-                  _buildNavItem(Icons.person_outline, "Profile", false, () {
-                    // Profile route e jabe
-                  }),
+                  _buildNavItem(Icons.inbox_outlined, "Requests", true, () {}),
+                  _buildNavItem(Icons.person_outline, "Profile", false, () {}),
                 ],
               ),
             ),
@@ -344,8 +401,6 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
       ),
     );
   }
-
-  // --- Baki UI Widgets (Ager motoi thakbe) ---
 
   Widget _buildBackHeader() {
     return Row(
@@ -417,12 +472,14 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
       title: "YOUR JOURNEY",
       child: Column(
         children: [
+          // Pickup Location
           _buildLocationInput(
             Icons.near_me,
             "PICKUP LOCATION",
-            "Where are you now?",
+            "Tap to select from map",
             Colors.blue,
             _pickupController,
+            _pickJourneyLocations, // নতুন ফাংশন ব্যবহার করা হলো
           ),
           Padding(
             padding: const EdgeInsets.only(left: 20),
@@ -435,13 +492,44 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
               ),
             ),
           ),
+          // Drop-off Location
           _buildLocationInput(
             Icons.location_on,
             "DROP-OFF LOCATION",
-            "Where do you want to go?",
+            "Tap to select from map",
             Colors.green,
             _dropoffController,
+            _pickJourneyLocations, // নতুন ফাংশন ব্যবহার করা হলো
           ),
+          // রুট ইনফো দেখাচ্ছে যদি ডিসট্যান্স পাওয়া যায়
+          if (_distanceStr.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.directions_car,
+                    size: 16,
+                    color: Colors.blue,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "Distance: $_distanceStr  •  Est. Time: $_durationStr",
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -453,6 +541,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
     String hint,
     Color iconColor,
     TextEditingController controller,
+    VoidCallback onTap,
   ) {
     return Row(
       children: [
@@ -476,6 +565,8 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
               ),
               TextField(
                 controller: controller,
+                readOnly: true, // User cannot type manually anymore
+                onTap: onTap, // Tapping will open the map
                 decoration: InputDecoration(
                   hintText: hint,
                   hintStyle: TextStyle(
@@ -692,6 +783,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
           ),
           const SizedBox(height: 8),
           TextField(
+            controller: _notesController,
             maxLines: 3,
             decoration: InputDecoration(
               hintText: "Any special requirements or preferences...",
@@ -852,7 +944,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
       child: ElevatedButton.icon(
         onPressed: isValid
             ? () {
-                _submitRideRequest(); // এখানে ফাংশন কল হবে
+                _submitRideRequest();
               }
             : null,
         style: ElevatedButton.styleFrom(

@@ -32,8 +32,8 @@ class RouteSectionWidget extends StatefulWidget {
 class _RouteSectionWidgetState extends State<RouteSectionWidget> {
   LatLng? _fromLatLng;
   LatLng? _toLatLng;
-  String _routeInfoText = ""; // দূরত্ব এবং সময় দেখানোর জন্য
-  bool _isLoadingRoute = false; // এপিআই কল চলার সময় লোডিং দেখানোর জন্য
+  String _routeInfoText = "";
+  bool _isLoadingRoute = false;
 
   final _fromController = TextEditingController();
   final _toController = TextEditingController();
@@ -59,6 +59,32 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
     _toController.text = widget.toLocation;
   }
 
+  // --- নতুন মেথড: Map স্ক্রিন থেকে পুরো জার্নির ডেটা ফেচ করা ---
+  Future<void> _pickRouteFromMap() async {
+    final journeyData = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const MapSelectionScreen()),
+    );
+
+    if (journeyData != null && journeyData is Map<String, dynamic>) {
+      setState(() {
+        // Map থেকে পাওয়া অ্যাড্রেসগুলো Text Field-এ বসানো হচ্ছে
+        _fromController.text = journeyData['pickup_address'] ?? '';
+        _toController.text = journeyData['dropoff_address'] ?? '';
+
+        // Map থেকে ক্যালকুলেট করা Shortest Path এর দূরত্ব এবং সময় বসানো হচ্ছে
+        final distance = journeyData['distance'] ?? '';
+        final duration = journeyData['duration'] ?? '';
+        _routeInfoText = "$distance • Est. $duration";
+      });
+
+      // Parent widget-কে ডেটা আপডেট পাঠানো হচ্ছে
+      widget.onFromChanged(_fromController.text);
+      widget.onToChanged(_toController.text);
+    }
+  }
+
+  // ম্যানুয়ালি টাইপ করলে রুট ক্যালকুলেট করার জন্য আগের মেথড
   Future<void> _calculateDrivingRoute() async {
     if (_fromLatLng != null && _toLatLng != null) {
       setState(() {
@@ -97,11 +123,6 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
               _isLoadingRoute = false;
             });
           }
-        } else {
-          setState(() {
-            _routeInfoText = "Failed to load route";
-            _isLoadingRoute = false;
-          });
         }
       } catch (e) {
         setState(() {
@@ -119,44 +140,23 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionHeader(
+        const _SectionHeader(
           icon: Icons.route_rounded,
           title: 'Route Details',
           subtitle: 'Set your pickup and dropoff locations',
         ),
         const SizedBox(height: 16),
-        // --- Pickup Location Field Update ---
+
+        // --- Pickup Location Field ---
         _buildLocationField(
           controller: _fromController,
           label: 'From (Pickup Location)',
           hint: 'e.g. Mirpur 10 Circle',
           prefixColor: const Color(0xFF4CAF50),
           onChanged: widget.onFromChanged,
-          onMapTap: () async {
-            final selectedPlace = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MapSelectionScreen(),
-              ),
-            );
-
-            if (selectedPlace != null &&
-                selectedPlace is Map<String, dynamic>) {
-              final String address = selectedPlace['address'] ?? '';
-              final LatLng? location =
-                  selectedPlace['latLng']; // LatLng বের করা হলো
-
-              setState(() {
-                _fromController.text = address;
-                _fromLatLng = location; // ভ্যারিয়েবলে সেভ করা হলো
-              });
-              widget.onFromChanged(address);
-
-              // ফাংশন কল করা হলো
-              _calculateDrivingRoute();
-            }
-          },
+          onMapTap: _pickRouteFromMap, // নতুন মেথড কল করা হচ্ছে
         ),
+
         const SizedBox(height: 12),
         Center(
           child: Container(
@@ -175,43 +175,20 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
           ),
         ),
         const SizedBox(height: 12),
-        // --- Dropoff Location Field Update ---
-        // --- Dropoff Location Field Update ---
+
+        // --- Dropoff Location Field ---
         _buildLocationField(
           controller: _toController,
           label: 'To (Dropoff Location)',
           hint: 'e.g. BUET Gate',
           prefixColor: const Color(0xFFE53935),
           onChanged: widget.onToChanged,
-          onMapTap: () async {
-            final selectedPlace = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MapSelectionScreen(),
-              ),
-            );
-
-            if (selectedPlace != null &&
-                selectedPlace is Map<String, dynamic>) {
-              final String address = selectedPlace['address'] ?? '';
-              final LatLng? location =
-                  selectedPlace['latLng']; // LatLng বের করা হলো
-
-              setState(() {
-                _toController.text = address;
-                _toLatLng = location; // ভ্যারিয়েবলে সেভ করা হলো
-              });
-              widget.onToChanged(address);
-
-              // ফাংশন কল করা হলো
-              _calculateDrivingRoute();
-            }
-          },
+          onMapTap: _pickRouteFromMap, // নতুন মেথড কল করা হচ্ছে
         ),
+
         const SizedBox(height: 20),
         Text(
           'Popular Locations',
-
           style: GoogleFonts.plusJakartaSans(
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -223,7 +200,7 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: AppTheme.primaryContainer, // আপনার থিমের হালকা কালার
+              color: AppTheme.primaryContainer,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppTheme.primary.withAlpha(50)),
             ),
@@ -457,18 +434,18 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
     );
   }
 
-  // --- Updated _buildLocationField method ---
   Widget _buildLocationField({
     required TextEditingController controller,
     required String label,
     required String hint,
     required Color prefixColor,
     required Function(String) onChanged,
-    VoidCallback? onMapTap, // নতুন প্যারামিটার যোগ করা হয়েছে
+    VoidCallback? onMapTap,
   }) {
     return TextFormField(
       controller: controller,
       onChanged: onChanged,
+      readOnly: true, // ইউজারের ম্যানুয়াল টাইপিং বন্ধ করতে এটি true করতে পারেন
       style: GoogleFonts.plusJakartaSans(
         fontSize: 15,
         fontWeight: FontWeight.w500,
@@ -490,7 +467,6 @@ class _RouteSectionWidgetState extends State<RouteSectionWidget> {
             ),
           ),
         ),
-        // --- ম্যাপ আইকনটি এখানে suffixIcon হিসেবে বসানো হয়েছে ---
         suffixIcon: onMapTap != null
             ? IconButton(
                 icon: Icon(Icons.map_rounded, color: AppTheme.primary),
