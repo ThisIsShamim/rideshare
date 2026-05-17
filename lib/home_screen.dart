@@ -9,7 +9,8 @@ import 'bookings/book_now.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'fetch_data/user_service.dart';
 import 'profile/profile.dart';
-import 'request_ride/ride_request_details_show.dart'; // Eta add korun
+import 'request_ride/ride_request_details_show.dart';
+import 'dart:async'; // Eta add korun
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +20,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  Timer? _timer; // টাইমার ভেরিয়েবল
   bool _showFilters = true;
   int _selectedIndex = 0; // বর্তমানে কোন ট্যাব সিলেক্টেড তা ট্র্যাক করবে
   String? _userGender;
@@ -33,6 +35,18 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _updateExpiredRides();
     _fetchUserGender();
+
+    // প্রতি ১ মিনিট পর পর ব্যাকগ্রাউন্ডে চেক করবে এবং স্ট্যাটাস ইনঅ্যাক্টিভ করে দিবে
+    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      _updateExpiredRides();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer
+        ?.cancel(); // স্ক্রিন থেকে বের হলে টাইমার বন্ধ করে দিবে মেমোরি লিক এড়াতে
+    super.dispose();
   }
 
   // UserService ব্যবহার করে Gender Fetch করা হচ্ছে
@@ -195,7 +209,37 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               }
 
-              final rides = snapshot.data!.docs;
+              final allRides = snapshot.data!.docs;
+
+              // <-- এখানে রিয়েল-টাইম ফিল্টার অ্যাড করা হলো (যাতে সময় পার হলে সাথে সাথে গায়েব হয়)
+              final rides = allRides.where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final departureData = data['departureTime'];
+
+                if (departureData != null) {
+                  DateTime dt;
+                  if (departureData is Timestamp) {
+                    dt = departureData.toDate();
+                  } else if (departureData is String) {
+                    dt = DateTime.tryParse(departureData) ?? DateTime.now();
+                  } else {
+                    dt = DateTime.now();
+                  }
+                  // বর্তমান সময়ের চেয়ে বড় (ভবিষ্যৎ) হলে true হবে, নাহলে স্ক্রিনে দেখাবে না
+                  return dt.isAfter(DateTime.now());
+                }
+                return false;
+              }).toList();
+
+              // ফিল্টার করার পর যদি কোনো রাইড না থাকে
+              if (rides.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Text("No rides available right now."),
+                  ),
+                );
+              }
 
               return ListView.builder(
                 shrinkWrap: true,
@@ -204,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   horizontal: 16,
                   vertical: 8,
                 ),
-                itemCount: rides.length,
+                itemCount: rides.length, // ফিল্টার করা rides.length
                 itemBuilder: (context, index) {
                   final doc = rides[index].data() as Map<String, dynamic>;
                   doc['rideId'] = rides[index].id;
@@ -324,8 +368,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   }
 
-                  // Rides count ber kora
-                  int rideCount = snapshot.data?.docs.length ?? 0;
+                  // <-- Rides count ফিল্টার করে বের করা (যাতে এক্সপায়ার্ড রাইড কাউন্ট না হয়)
+                  int rideCount =
+                      snapshot.data?.docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final departureData = data['departureTime'];
+                        if (departureData != null) {
+                          DateTime dt;
+                          if (departureData is Timestamp) {
+                            dt = departureData.toDate();
+                          } else {
+                            dt =
+                                DateTime.tryParse(departureData.toString()) ??
+                                DateTime.now();
+                          }
+                          return dt.isAfter(DateTime.now());
+                        }
+                        return false;
+                      }).length ??
+                      0;
 
                   return Text(
                     "$rideCount ${rideCount <= 1 ? 'ride' : 'rides'} available",
