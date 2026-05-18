@@ -283,7 +283,7 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
         timeLimit: const Duration(seconds: 5),
       );
 
-      if (initialPos != null && mounted) {
+      if (mounted) {
         LatLng liveLoc = LatLng(initialPos.latitude, initialPos.longitude);
         setState(() {
           _liveUserLocation = liveLoc;

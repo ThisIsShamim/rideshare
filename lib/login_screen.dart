@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,10 +18,12 @@ class _LoginScreenState extends State<LoginScreen> {
   AuthMode _mode = AuthMode.login;
 
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _obscurePassword = true;
 
   String _selectedGender = 'Male';
@@ -41,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
     FocusScope.of(context).unfocus();
 
     final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -51,6 +56,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!_isLogin && name.isEmpty) {
       _showMessage("Please enter your full name");
+      return;
+    }
+
+    if (!_isLogin && phone.isEmpty) {
+      _showMessage("Please enter your phone number");
       return;
     }
 
@@ -77,9 +87,12 @@ class _LoginScreenState extends State<LoginScreen> {
           'uid': uid,
           'email': email,
           'fullname': name,
+          'phone': phone,
           'gender': _selectedGender,
           'usertype': _selectedUserType,
+          'authProvider': 'email',
           'createdAt': FieldValue.serverTimestamp(),
+          'lastLoginAt': FieldValue.serverTimestamp(),
         });
       }
 
@@ -99,6 +112,85 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    FocusScope.of(context).unfocus();
+
+    setState(() => _isGoogleLoading = true);
+
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email']);
+
+      await googleSignIn.signOut();
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        _showMessage("Google sign-in cancelled.");
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
+
+      final User? user = userCredential.user;
+
+      if (user == null) {
+        _showMessage("Google sign-in failed.");
+        return;
+      }
+
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+
+      final userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        await userRef.set({
+          'uid': user.uid,
+          'email': user.email ?? '',
+          'fullname': user.displayName ?? '',
+          'phone': user.phoneNumber ?? '',
+          'gender': '',
+          'usertype': 'Student',
+          'authProvider': 'google',
+          'photoURL': user.photoURL ?? '',
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await userRef.set({
+          'email': user.email ?? '',
+          'fullname': user.displayName ?? userDoc.data()?['fullname'] ?? '',
+          'photoURL': user.photoURL ?? '',
+          'authProvider': 'google',
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      _showMessage(_firebaseError(e));
+    } catch (e) {
+      _showMessage("Google sign-in failed: $e");
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
@@ -132,6 +224,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return "This email is already registered.";
       case 'weak-password':
         return "Password should be at least 6 characters.";
+      case 'account-exists-with-different-credential':
+        return "This email is already linked with another login method.";
       default:
         return e.message ?? "Authentication failed.";
     }
@@ -153,6 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -164,15 +259,12 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: _isLogin ? 112 : 70),
-
+          SizedBox(height: _isLogin ? 112 : 56),
           const Padding(
             padding: EdgeInsets.only(left: 4),
             child: BrandHeader(),
           ),
-
           const SizedBox(height: 18),
-
           AuthCard(
             child: AnimatedSize(
               duration: const Duration(milliseconds: 250),
@@ -200,10 +292,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Color(0xFF6B7280),
                     ),
                   ),
-
                   const SizedBox(height: 17),
 
-                  const GoogleButton(),
+                  GoogleButton(
+                    isLoading: _isGoogleLoading,
+                    onTap: _isGoogleLoading ? null : _signInWithGoogle,
+                  ),
 
                   const SizedBox(height: 15),
 
@@ -220,6 +314,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _nameController,
                       hint: "Full name",
                       icon: Icons.person_outline_rounded,
+                    ),
+                    const SizedBox(height: 10),
+                    AuthInputField(
+                      controller: _phoneController,
+                      hint: "Phone number",
+                      icon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -346,9 +447,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 15),
-
           const Center(
             child: Text(
               "© 2026 RideShare · Secure & Eco-Friendly",
@@ -359,7 +458,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 40),
         ],
       ),
@@ -477,16 +575,15 @@ class AuthCard extends StatelessWidget {
 }
 
 class GoogleButton extends StatelessWidget {
-  const GoogleButton({super.key});
+  final VoidCallback? onTap;
+  final bool isLoading;
+
+  const GoogleButton({super.key, required this.onTap, required this.isLoading});
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Google Sign-In is not connected yet.")),
-        );
-      },
+      onTap: isLoading ? null : onTap,
       borderRadius: BorderRadius.circular(11),
       child: Container(
         height: 38,
@@ -495,27 +592,38 @@ class GoogleButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(11),
           border: Border.all(color: const Color(0xFFD9DEE7), width: 1),
         ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "G",
-              style: TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF4285F4),
-              ),
-            ),
-            SizedBox(width: 12),
-            Text(
-              "Continue with Google",
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF111827),
-              ),
-            ),
-          ],
+        child: Center(
+          child: isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Color(0xFF2563EB),
+                  ),
+                )
+              : const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "G",
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF4285F4),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      "Continue with Google",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );
