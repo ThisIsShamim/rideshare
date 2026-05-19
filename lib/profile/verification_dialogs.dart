@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart'; // File picker package import kora hoyeche
 
 class VerificationDialogs {
-  // --- বিশাল ইউনিভার্সিটির লিস্ট ---
+  // --- bishal university list ---
   static final List<String> universities = [
     // Public Universities
     "University of Dhaka (DU)",
@@ -58,7 +59,7 @@ class VerificationDialogs {
     "Northern University Bangladesh (NUB)",
     "Southern University Bangladesh",
     "Premier University",
-    "International Islamic University Chittagong (IIUC)",
+    "International Islamic University Chancellor (IIUC)",
     "Varendra University",
     "Notre Dame University Bangladesh (NDUB)",
     "Canadian University of Bangladesh (CUB)",
@@ -90,7 +91,7 @@ class VerificationDialogs {
     "Sher-e-Bangla Medical College (SBMC)",
   ];
 
-  // --- বিশাল ডিপার্টমেন্টের লিস্ট ---
+  // --- bishal department list ---
   static final List<String> departments = [
     "Computer Science & Engineering (CSE)",
     "Electrical & Electronic Engineering (EEE)",
@@ -125,398 +126,1060 @@ class VerificationDialogs {
   static void showUserVerification(BuildContext context) {
     TextEditingController uniController = TextEditingController();
     TextEditingController deptController = TextEditingController();
+    TextEditingController idController = TextEditingController();
     String? selectedRole;
+    int currentPage = 1; // 1: Info & Selection, 2: ID & Upload
+    String? pickedFileName; // Unified variable for picked file name
 
     showDialog(
       context: context,
+      barrierDismissible: true,
       barrierColor: Colors.black.withOpacity(0.5),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 24,
-            ),
-            backgroundColor: Colors.white,
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            bool isStudent = selectedRole == 'Student';
+            String idLabelText =
+                isStudent ? "Student ID Number *" : "Job ID Number *";
+            String idHintText =
+                isStudent ? "e.g., 2021-1-60-001" : "e.g., FAC-2023-001";
+            String uploadHintText =
+                isStudent ? "Click to upload Student ID" : "Click to upload Job ID";
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 24,
+              ),
+              backgroundColor: Colors.white,
+              elevation: 0,
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Close Button
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(
+                            Icons.close,
+                            color: Color(0xFF828282),
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Shield Icon
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2F80ED).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.shield_outlined,
+                          color: Color(0xFF2F80ED),
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Title
+                      const Text(
+                        "User Verification Required",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+
+                      // Subtitle
+                      const Text(
+                        "Verify your identity to book or post rides safely",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF828282),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      if (currentPage == 1) ...[
+                        // Info Box
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2F80ED).withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: const Color(0xFF2F80ED).withOpacity(0.15),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Why verify?",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2F80ED),
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              _buildCheckItem("Build trust with other users"),
+                              _buildCheckItem("Access to all RideShare features"),
+                              _buildCheckItem("Enhanced safety for everyone"),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Role Dropdown (আইকন সহ লিস্ট)
+                        _buildFieldLabel("I am a *"),
+                        _buildRoleDropdown(
+                          value: selectedRole,
+                          hint: "Select your role",
+                          onChanged: (val) {
+                            setModalState(() {
+                              selectedRole = val;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // University Selector
+                        _buildFieldLabel("University *"),
+                        _buildBottomSheetSelector(
+                          hint: "Select your university",
+                          value: uniController.text,
+                          prefixLabel: "Selected University: ",
+                          onTap: () {
+                            _showSearchBottomSheet(
+                              context: context,
+                              title: "Search University",
+                              allItems: universities,
+                              mainController: uniController,
+                              onSelected: () {
+                                setModalState(() {});
+                              },
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Department Selector
+                        _buildFieldLabel("Department *"),
+                        _buildBottomSheetSelector(
+                          hint: "Select your department",
+                          value: deptController.text,
+                          prefixLabel: "Selected Department: ",
+                          onTap: () {
+                            _showSearchBottomSheet(
+                              context: context,
+                              title: "Search Department",
+                              allItems: departments,
+                              mainController: deptController,
+                              onSelected: () {
+                                setModalState(() {});
+                              },
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Continue Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: (selectedRole != null &&
+                                    uniController.text.isNotEmpty &&
+                                    deptController.text.isNotEmpty)
+                                ? () {
+                                    setModalState(() {
+                                      currentPage = 2;
+                                    });
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF070B19),
+                              disabledBackgroundColor: const Color(0xFFE0E0E0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              "Continue",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        // ID Input Field
+                        _buildFieldLabel(idLabelText),
+                        TextField(
+                          controller: idController,
+                          onChanged: (val) {
+                            setModalState(() {});
+                          },
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF333333),
+                          ),
+                          decoration: _buildInputDecoration(idHintText),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // File Upload Card
+                        _buildFieldLabel("Upload ID Card *"),
+                        GestureDetector(
+                          onTap: () async {
+                            FilePickerResult? result =
+                                await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+                            );
+                            if (result != null) {
+                              setModalState(() {
+                                pickedFileName = result.files.single.name;
+                              });
+                            }
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 24,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9FAFC),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: pickedFileName != null
+                                    ? const Color(0xFF219653)
+                                    : const Color(0xFFE0E0E0),
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  pickedFileName != null
+                                      ? Icons.check_circle_outline
+                                      : Icons.upload_file_outlined,
+                                  size: 32,
+                                  color: pickedFileName != null
+                                      ? const Color(0xFF219653)
+                                      : const Color(0xFF828282),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  pickedFileName ?? uploadHintText,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: pickedFileName != null
+                                        ? const Color(0xFF219653)
+                                        : const Color(0xFF828282),
+                                    fontWeight: pickedFileName != null
+                                        ? FontWeight.w500
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Action Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 46,
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(
+                                      color: Color(0xFFE0E0E0),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      currentPage = 1;
+                                    });
+                                  },
+                                  child: const Text(
+                                    "Back",
+                                    style: TextStyle(
+                                      color: Color(0xFF4F4F4F),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: SizedBox(
+                                height: 46,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF070B19),
+                                    disabledBackgroundColor: const Color(0xFFE0E0E0),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  onPressed: (idController.text.isNotEmpty &&
+                                          pickedFileName != null)
+                                      ? () {
+                                          Navigator.pop(context);
+                                        }
+                                      : null,
+                                  child: const Text(
+                                    "Submit",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // --- DRIVER VERIFICATION DIALOG ---
+  static void showDriverVerification(BuildContext context) {
+    TextEditingController drivingLicenseController = TextEditingController();
+    TextEditingController nidController = TextEditingController();
+    TextEditingController vehicleRegController = TextEditingController();
+
+    int currentPage = 1; // 1: Welcome page, 2: Input Info page, 3: Document Upload page
+
+    // Separated file states for driver uploads
+    String? pickedLicenseFile;
+    String? pickedNidFile;
+    String? pickedVehicleRegFile;
+    String? pickedInsuranceFile;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            bool isFormValid = drivingLicenseController.text.isNotEmpty &&
+                nidController.text.isNotEmpty &&
+                vehicleRegController.text.isNotEmpty;
+
+            bool isAllUploaded = pickedLicenseFile != null &&
+                pickedNidFile != null &&
+                pickedVehicleRegFile != null &&
+                pickedInsuranceFile != null;
+
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 14,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Top Bar Handle Indicator
+                    Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+
+                    // Close Button row
                     Align(
                       alignment: Alignment.topRight,
                       child: GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: const Icon(
                           Icons.close,
-                          color: Color(0xFF828282),
-                          size: 22,
+                          color: Color(0xFF4F4F4F),
+                          size: 24,
                         ),
                       ),
                     ),
+
+                    // Icon section wrapper with continuous uniform headers
                     Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2F80ED).withOpacity(0.1),
+                      padding: const EdgeInsets.all(14),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF4F8FF),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.shield_outlined,
+                        Icons.directions_car_filled_rounded,
                         color: Color(0xFF2F80ED),
                         size: 32,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     const Text(
-                      "User Verification Required",
+                      "Driver Verification",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF333333),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      "Verify your identity to book or post rides safely",
+                    const SizedBox(height: 4),
+                    Text(
+                      currentPage == 3
+                          ? "Upload Documents"
+                          : "Complete verification to start posting rides",
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: Color(0xFF828282)),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF828282)),
                     ),
                     const SizedBox(height: 24),
 
-                    _buildFieldLabel("I am a *"),
-                    _buildRoleDropdown(
-                      value: selectedRole,
-                      hint: "Select your role",
-                      onChanged: (val) {
-                        setModalState(() {
-                          selectedRole = val;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildFieldLabel("University *"),
-                    _buildBottomSheetSelector(
-                      hint: "Select your university",
-                      value: uniController.text,
-                      onTap: () {
-                        _showSearchBottomSheet(
-                          context: context,
-                          title: "Search University",
-                          allItems: universities,
-                          mainController: uniController,
-                          onSelected: () => setModalState(() {}),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildFieldLabel("Department *"),
-                    _buildBottomSheetSelector(
-                      hint: "Select your department",
-                      value: deptController.text,
-                      onTap: () {
-                        _showSearchBottomSheet(
-                          context: context,
-                          title: "Search Department",
-                          allItems: departments,
-                          mainController: deptController,
-                          onSelected: () => setModalState(() {}),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              (selectedRole != null &&
-                                  uniController.text.isNotEmpty &&
-                                  deptController.text.isNotEmpty)
-                              ? const Color(0xFF2F80ED)
-                              : const Color(0xFF828282),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                    // --- PAGE 1: Welcome Layout ---
+                    if (currentPage == 1) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setModalState(() {
+                              currentPage = 2;
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF070B19),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 0,
                           ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          "Continue",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                          child: const Text(
+                            "Start Verification",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
                           ),
                         ),
+                      ),
+                    ]
+                    // --- PAGE 2: TextFields Form Layout ---
+                    else if (currentPage == 2) ...[
+                      _buildFieldLabel("Driving License Number *"),
+                      TextField(
+                        controller: drivingLicenseController,
+                        onChanged: (_) => setModalState(() {}),
+                        style: const TextStyle(fontSize: 14, color: Color(0xFF333333)),
+                        decoration: _buildVideoInputDecoration("e.g., DHA-123456789"),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildFieldLabel("NID Number *"),
+                      TextField(
+                        controller: nidController,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => setModalState(() {}),
+                        style: const TextStyle(fontSize: 14, color: Color(0xFF333333)),
+                        decoration: _buildVideoInputDecoration("e.g., 1234567890"),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildFieldLabel("Vehicle Registration Number *"),
+                      TextField(
+                        controller: vehicleRegController,
+                        onChanged: (_) => setModalState(() {}),
+                        style: const TextStyle(fontSize: 14, color: Color(0xFF333333)),
+                        decoration: _buildVideoInputDecoration("e.g., DHA-Metro-11-1234"),
+                      ),
+                      const SizedBox(height: 28),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 46,
+                              child: OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  side: const BorderSide(color: Color(0xFFE0E0E0)),
+                                ),
+                                onPressed: () {
+                                  setModalState(() {
+                                    currentPage = 1;
+                                  });
+                                },
+                                child: const Text(
+                                  'Back',
+                                  style: TextStyle(
+                                    color: Color(0xFF4F4F4F),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: SizedBox(
+                              height: 46,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isFormValid
+                                      ? const Color(0xFF070B19)
+                                      : const Color(0xFFBDBDBD),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                onPressed: isFormValid
+                                    ? () {
+                                        setModalState(() {
+                                          currentPage = 3;
+                                        });
+                                      }
+                                    : null,
+                                child: const Text(
+                                  'Continue',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ]
+                    // --- PAGE 3: Document Upload Card List Layout ---
+                    else if (currentPage == 3) ...[
+                      _buildVideoStyleUploadCard(
+                        title: "Driving License",
+                        subtitle: "Clear photo of both sides",
+                        icon: Icons.credit_card_rounded,
+                        pickedFile: pickedLicenseFile,
+                        onTap: () async {
+                          FilePickerResult? r = await FilePicker.platform.pickFiles(
+                            type: FileType.custom,
+                            allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+                          );
+                          if (r != null) {
+                            setModalState(() => pickedLicenseFile = r.files.single.name);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      _buildVideoStyleUploadCard(
+                        title: "National ID Card",
+                        subtitle: "Front and back side",
+                        icon: Icons.assignment_ind_outlined,
+                        pickedFile: pickedNidFile,
+                        onTap: () async {
+                          FilePickerResult? r = await FilePicker.platform.pickFiles(
+                            type: FileType.custom,
+                            allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+                          );
+                          if (r != null) {
+                            setModalState(() => pickedNidFile = r.files.single.name);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      _buildVideoStyleUploadCard(
+                        title: "Vehicle Registration",
+                        subtitle: "BRTA registration certificate",
+                        icon: Icons.directions_car_filled_outlined,
+                        pickedFile: pickedVehicleRegFile,
+                        onTap: () async {
+                          FilePickerResult? r = await FilePicker.platform.pickFiles(
+                            type: FileType.custom,
+                            allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+                          );
+                          if (r != null) {
+                            setModalState(() => pickedVehicleRegFile = r.files.single.name);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      _buildVideoStyleUploadCard(
+                        title: "Vehicle Insurance",
+                        subtitle: "Valid insurance certificate",
+                        icon: Icons.shield_outlined,
+                        pickedFile: pickedInsuranceFile,
+                        onTap: () async {
+                          FilePickerResult? r = await FilePicker.platform.pickFiles(
+                            type: FileType.custom,
+                            allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+                          );
+                          if (r != null) {
+                            setModalState(() => pickedInsuranceFile = r.files.single.name);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 46,
+                              child: OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  side: const BorderSide(color: Color(0xFFE0E0E0)),
+                                  backgroundColor: Colors.white,
+                                ),
+                                onPressed: () {
+                                  setModalState(() {
+                                    currentPage = 2;
+                                  });
+                                },
+                                child: const Text(
+                                  'Back',
+                                  style: TextStyle(
+                                    color: Color(0xFF4F4F4F),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: SizedBox(
+                              height: 46,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isAllUploaded
+                                      ? const Color(0xFF070B19)
+                                      : const Color(0xFF9EA8B3),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                onPressed: isAllUploaded
+                                    ? () {
+                                        Navigator.pop(context);
+                                      }
+                                    : null,
+                                child: const Text(
+                                  'Submit for Verification',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ========================================================
+  // --- PRIVATE COMPONENTS & CARD BUILDERS (VIDEO STYLE) ---
+  // ========================================================
+  static Widget _buildVideoStyleUploadCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required String? pickedFile,
+    required VoidCallback onTap,
+  }) {
+    bool isUploaded = pickedFile != null;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFEAEFF5), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.015),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: const Color(0xFF2F80ED), size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF8E9AA8),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // --- DRIVER VERIFICATION DIALOG ---
-  static void showDriverVerification(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 12,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF4F8FF),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.directions_car_filled_rounded,
-                  color: Color(0xFF2F80ED),
-                  size: 30,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                "Driver Verification",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF333333),
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                "Complete verification to start posting rides",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Color(0xFF828282)),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D1724),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    "Start Verification",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  // --- HELPER WIDGETS ---
-  static Widget _buildFieldLabel(String label) {
-    bool hasAsterisk = label.contains('*');
-    String text = label.replaceAll('*', '').trim();
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: RichText(
-          text: TextSpan(
-            text: text,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF333333),
-            ),
-            children: hasAsterisk
-                ? [
-                    const TextSpan(
-                      text: ' *',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ]
-                : [],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // --- UPDATED: Role Dropdown (Student, Faculty etc) ---
-  static Widget _buildRoleDropdown({
-    required String? value,
-    required String hint,
-    required Function(String?) onChanged,
-  }) {
-    final List<Map<String, String>> roles = [
-      {'icon': '🎓', 'title': 'Student'},
-      {'icon': '👩‍🏫', 'title': 'Faculty Member'},
-      {'icon': '👔', 'title': 'Staff Member'},
-    ];
-
-    bool isSelected = value != null;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          // সিলেক্ট হলে বর্ডারটা হালকা নীল হবে (একটু ফোকাসড দেখানোর জন্য)
-          color: isSelected
-              ? const Color(0xFF2F80ED).withOpacity(0.3)
-              : const Color(0xFFF2F2F2),
-        ),
-      ),
-      height: 50,
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          // --- এখানে আইকন চেঞ্জ করার লজিক দেওয়া হয়েছে ---
-          icon: isSelected
-              ? const Icon(
-                  Icons.check_circle,
-                  color: Color(0xFF219653),
-                  size: 20,
-                ) // সবুজ চেকমার্ক
-              : const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Color(0xFFBDBDBD),
-                ), // নরমাল অ্যারো
-          hint: Text(
-            hint,
-            style: const TextStyle(fontSize: 13, color: Color(0xFFBDBDBD)),
-          ),
-          dropdownColor: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          items: roles.map((role) {
-            return DropdownMenuItem<String>(
-              value: role['title'],
-              child: Row(
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: onTap,
+            child: Container(
+              width: double.infinity,
+              height: 68,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAFCFE),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isUploaded ? const Color(0xFF219653) : const Color(0xFFD3DFEE),
+                  width: 1.2,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(role['icon']!, style: const TextStyle(fontSize: 16)),
-                  const SizedBox(width: 10),
-                  Text(
-                    role['title']!,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: const Color(0xFF333333),
-                      fontWeight: isSelected
-                          ? FontWeight.w500
-                          : FontWeight.normal,
+                  Icon(
+                    isUploaded ? Icons.check_circle_rounded : Icons.file_upload_outlined,
+                    color: isUploaded ? const Color(0xFF219653) : const Color(0xFF8E9AA8),
+                    size: 20,
+                  ),
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      isUploaded ? pickedFile! : "Click to upload",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: isUploaded ? const Color(0xFF219653) : const Color(0xFF5F6E7D),
+                      ),
                     ),
                   ),
                 ],
               ),
-            );
-          }).toList(),
-          onChanged: onChanged,
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // --- UPDATED: Bottom Sheet Selector ---
-  static Widget _buildBottomSheetSelector({
-    required String hint,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    bool isSelected = value.isNotEmpty;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFC),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            // সিলেক্ট হলে বর্ডারটা হালকা নীল হবে
-            color: isSelected
-                ? const Color(0xFF2F80ED).withOpacity(0.3)
-                : const Color(0xFFF2F2F2),
+  // --- INTERNAL HELPER DESIGN UTILS ---
+  static Widget _buildCheckItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          const Text(
+            '✓ ',
+            style: TextStyle(
+              color: Color(0xFF2F80ED),
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
           ),
-        ),
-        height: 50,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                isSelected ? value : hint,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isSelected
-                      ? const Color(0xFF333333)
-                      : const Color(0xFFBDBDBD),
-                  fontWeight: isSelected
-                      ? FontWeight.w500
-                      : FontWeight.normal, // সিলেক্ট হলে একটু বোল্ড হবে
-                ),
-                overflow: TextOverflow.ellipsis,
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF2F80ED),
               ),
             ),
-            // --- এখানে আইকন চেঞ্জ করার লজিক ---
-            isSelected
-                ? const Icon(
-                    Icons.check_circle,
-                    color: Color(0xFF219653),
-                    size: 20,
-                  ) // সবুজ চেকমার্ক
-                : const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: Color(0xFFBDBDBD),
-                  ), // নরমাল অ্যারো
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildFieldLabel(String label) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8, top: 2),
+        child: Row(
+          children: [
+            Text(
+              label.replaceAll(" *", ""),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF333333),
+              ),
+            ),
+            if (label.contains("*"))
+              const Text(
+                " *",
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  // Search Bottom Sheet (একই থাকছে)
+  static Widget _buildRoleDropdown({
+    required String? value,
+    required String hint,
+    required Function(String?) onChanged,
+  }) {
+    final Map<String, Map<String, dynamic>> roleConfig = {
+      'Student': {'icon': Icons.school_outlined, 'color': const Color(0xFF2F80ED)}, 
+      'Faculty Member': {'icon': Icons.co_present_outlined, 'color': const Color(0xFF9B51E0)}, 
+      'Staff Member': {'icon': Icons.badge_outlined, 'color': const Color(0xFFF2994A)}, 
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFF2F2F2)),
+      ),
+      height: 50,
+      child: Row(
+        children: [
+          Icon(
+            value != null ? roleConfig[value]!['icon'] : Icons.person_outline_rounded,
+            color: value != null ? roleConfig[value]!['color'] : const Color(0xFFBDBDBD),
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: value,
+                isExpanded: true,
+                hint: Text(
+                  hint,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFBDBDBD),
+                  ),
+                ),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: Color(0xFFBDBDBD),
+                ),
+                items: roleConfig.keys.map((String role) {
+                  return DropdownMenuItem<String>(
+                    value: role,
+                    child: Row(
+                      children: [
+                        Icon(
+                          roleConfig[role]!['icon'],
+                          color: roleConfig[role]!['color'],
+                          size: 20
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          role,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildBottomSheetSelector({
+    required String hint,
+    required String value,
+    required String prefixLabel,
+    required VoidCallback onTap,
+  }) {
+    bool hasValue = value.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: hasValue ? const Color(0xFFE8F5E9) : const Color(0xFFF9FAFC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: hasValue ? const Color(0xFF219653) : const Color(0xFFF2F2F2),
+                width: hasValue ? 1.2 : 1.0,
+              ),
+            ),
+            height: 50,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    hint,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: hasValue ? const Color(0xFF219653) : const Color(0xFFBDBDBD),
+                      fontWeight: hasValue ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: hasValue ? const Color(0xFF219653) : const Color(0xFFBDBDBD),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (hasValue) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              "$prefixLabel$value",
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF219653),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  static InputDecoration _buildInputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(
+        color: Color(0xFFBDBDBD),
+        fontSize: 13,
+      ),
+      filled: true,
+      fillColor: const Color(0xFFF9FAFC),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Color(0xFFF2F2F2)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Color(0xFF2F80ED)),
+      ),
+    );
+  }
+
+  static InputDecoration _buildVideoInputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFFBDBDBD), fontSize: 13),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFD3DFEE), width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF2F80ED), width: 1.5),
+      ),
+    );
+  }
+
   static void _showSearchBottomSheet({
     required BuildContext context,
     required String title,
@@ -538,7 +1201,9 @@ class VerificationDialogs {
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
               ),
               child: Column(
                 children: [
@@ -552,32 +1217,15 @@ class VerificationDialogs {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const SizedBox(width: 24),
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF333333),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(
-                            Icons.close,
-                            color: Color(0xFF828282),
-                            size: 22,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF333333),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: TextField(
@@ -585,40 +1233,27 @@ class VerificationDialogs {
                       onChanged: (val) {
                         setSheetState(() {
                           filteredItems = allItems
-                              .where(
-                                (item) => item.toLowerCase().contains(
-                                  val.toLowerCase(),
-                                ),
-                              )
+                              .where((item) => item
+                                  .toLowerCase()
+                                  .contains(val.toLowerCase()))
                               .toList();
                         });
                       },
+                      style: const TextStyle(fontSize: 14),
                       decoration: InputDecoration(
                         hintText: "Search",
+                        hintStyle: const TextStyle(color: Color(0xFFBDBDBD)),
                         prefixIcon: const Icon(
-                          Icons.search,
+                          Icons.search_rounded,
                           color: Color(0xFF828282),
+                          size: 22,
                         ),
                         filled: true,
-                        fillColor: const Color(0xFFF9FAFC),
+                        fillColor: const Color(0xFFF2F2F2).withOpacity(0.5),
                         contentPadding: const EdgeInsets.symmetric(vertical: 0),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFF2F2F2),
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFF2F2F2),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF2F80ED),
-                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
                         ),
                       ),
                     ),
