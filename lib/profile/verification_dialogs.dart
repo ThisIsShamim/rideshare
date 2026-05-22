@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart'; // File picker package import kora hoyeche
+import 'package:file_picker/file_picker.dart';
 
 class VerificationDialogs {
   // --- bishal university list ---
@@ -129,7 +129,7 @@ class VerificationDialogs {
     TextEditingController idController = TextEditingController();
     String? selectedRole;
     int currentPage = 1; // 1: Info & Selection, 2: ID & Upload
-    String? pickedFileName; // Unified variable for picked file name
+    String? pickedFileName; 
 
     showDialog(
       context: context,
@@ -245,7 +245,7 @@ class VerificationDialogs {
                         ),
                         const SizedBox(height: 20),
 
-                        // Role Dropdown (আইকন সহ লিস্ট)
+                        // Role Dropdown (Updated as per screenshot)
                         _buildFieldLabel("I am a *"),
                         _buildRoleDropdown(
                           value: selectedRole,
@@ -258,12 +258,11 @@ class VerificationDialogs {
                         ),
                         const SizedBox(height: 16),
 
-                        // University Selector
+                        // University Selector (Updated as per screenshot)
                         _buildFieldLabel("University *"),
                         _buildBottomSheetSelector(
-                          hint: "Select your university",
+                          hint: "Search your university...",
                           value: uniController.text,
-                          prefixLabel: "Selected University: ",
                           onTap: () {
                             _showSearchBottomSheet(
                               context: context,
@@ -276,14 +275,36 @@ class VerificationDialogs {
                             );
                           },
                         ),
+                        if (uniController.text.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                color: Color(0xFF219653),
+                                size: 14,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  "Selected ${uniController.text}",
+                                  style: const TextStyle(
+                                    color: Color(0xFF219653),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 16),
 
-                        // Department Selector
+                        // Department Selector (Updated as per screenshot)
                         _buildFieldLabel("Department *"),
                         _buildBottomSheetSelector(
-                          hint: "Select your department",
+                          hint: "Search your department...",
                           value: deptController.text,
-                          prefixLabel: "Selected Department: ",
                           onTap: () {
                             _showSearchBottomSheet(
                               context: context,
@@ -296,6 +317,29 @@ class VerificationDialogs {
                             );
                           },
                         ),
+                        if (deptController.text.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                color: Color(0xFF219653),
+                                size: 14,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  "Selected ${deptController.text}",
+                                  style: const TextStyle(
+                                    color: Color(0xFF219653),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 24),
 
                         // Continue Button
@@ -487,9 +531,8 @@ class VerificationDialogs {
     TextEditingController nidController = TextEditingController();
     TextEditingController vehicleRegController = TextEditingController();
 
-    int currentPage = 1; // 1: Welcome page, 2: Input Info page, 3: Document Upload page
+    int currentPage = 1; 
 
-    // Separated file states for driver uploads
     String? pickedLicenseFile;
     String? pickedNidFile;
     String? pickedVehicleRegFile;
@@ -526,7 +569,6 @@ class VerificationDialogs {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Top Bar Handle Indicator
                     Container(
                       width: 40,
                       height: 4,
@@ -536,8 +578,6 @@ class VerificationDialogs {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-
-                    // Close Button row
                     Align(
                       alignment: Alignment.topRight,
                       child: GestureDetector(
@@ -549,8 +589,6 @@ class VerificationDialogs {
                         ),
                       ),
                     ),
-
-                    // Icon section wrapper with continuous uniform headers
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: const BoxDecoration(
@@ -582,7 +620,6 @@ class VerificationDialogs {
                     ),
                     const SizedBox(height: 24),
 
-                    // --- PAGE 1: Welcome Layout ---
                     if (currentPage == 1) ...[
                       SizedBox(
                         width: double.infinity,
@@ -610,9 +647,7 @@ class VerificationDialogs {
                           ),
                         ),
                       ),
-                    ]
-                    // --- PAGE 2: TextFields Form Layout ---
-                    else if (currentPage == 2) ...[
+                    ] else if (currentPage == 2) ...[
                       _buildFieldLabel("Driving License Number *"),
                       TextField(
                         controller: drivingLicenseController,
@@ -700,9 +735,7 @@ class VerificationDialogs {
                           ),
                         ],
                       ),
-                    ]
-                    // --- PAGE 3: Document Upload Card List Layout ---
-                    else if (currentPage == 3) ...[
+                    ] else if (currentPage == 3) ...[
                       _buildVideoStyleUploadCard(
                         title: "Driving License",
                         subtitle: "Clear photo of both sides",
@@ -943,7 +976,6 @@ class VerificationDialogs {
     );
   }
 
-  // --- INTERNAL HELPER DESIGN UTILS ---
   static Widget _buildCheckItem(String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -1001,140 +1033,111 @@ class VerificationDialogs {
     );
   }
 
+  // Updated to match exactly like the screenshot with Emojis
   static Widget _buildRoleDropdown({
     required String? value,
     required String hint,
     required Function(String?) onChanged,
   }) {
-    final Map<String, Map<String, dynamic>> roleConfig = {
-      'Student': {'icon': Icons.school_outlined, 'color': const Color(0xFF2F80ED)}, 
-      'Faculty Member': {'icon': Icons.co_present_outlined, 'color': const Color(0xFF9B51E0)}, 
-      'Staff Member': {'icon': Icons.badge_outlined, 'color': const Color(0xFFF2994A)}, 
+    final Map<String, String> roleConfig = {
+      'Student': '🎓',
+      'Faculty Member': '👨‍🏫',
+      'Staff Member': '💼',
     };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFF2F2F2)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
-      height: 50,
-      child: Row(
-        children: [
-          Icon(
-            value != null ? roleConfig[value]!['icon'] : Icons.person_outline_rounded,
-            color: value != null ? roleConfig[value]!['color'] : const Color(0xFFBDBDBD),
-            size: 22,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: value,
-                isExpanded: true,
-                hint: Text(
-                  hint,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFFBDBDBD),
-                  ),
-                ),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Color(0xFFBDBDBD),
-                ),
-                items: roleConfig.keys.map((String role) {
-                  return DropdownMenuItem<String>(
-                    value: role,
-                    child: Row(
-                      children: [
-                        Icon(
-                          roleConfig[role]!['icon'],
-                          color: roleConfig[role]!['color'],
-                          size: 20
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          role,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF333333),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                onChanged: onChanged,
-              ),
+      height: 48,
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          hint: Text(
+            hint,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFFBDBDBD),
             ),
           ),
-        ],
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Color(0xFF828282),
+          ),
+          items: roleConfig.keys.map((String role) {
+            return DropdownMenuItem<String>(
+              value: role,
+              child: Row(
+                children: [
+                  Text(
+                    roleConfig[role]!,
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    role,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF333333),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
       ),
     );
   }
 
+  // Updated to match exact search-style layout with trailing search icon
   static Widget _buildBottomSheetSelector({
     required String hint,
     required String value,
-    required String prefixLabel,
     required VoidCallback onTap,
   }) {
     bool hasValue = value.isNotEmpty;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: hasValue ? const Color(0xFFE8F5E9) : const Color(0xFFF9FAFC),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: hasValue ? const Color(0xFF219653) : const Color(0xFFF2F2F2),
-                width: hasValue ? 1.2 : 1.0,
-              ),
-            ),
-            height: 50,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    hint,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: hasValue ? const Color(0xFF219653) : const Color(0xFFBDBDBD),
-                      fontWeight: hasValue ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: hasValue ? const Color(0xFF219653) : const Color(0xFFBDBDBD),
-                ),
-              ],
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: const Color(0xFFE0E0E0),
+            width: 1.0,
           ),
         ),
-        if (hasValue) ...[
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: Text(
-              "$prefixLabel$value",
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF219653),
-                fontWeight: FontWeight.w600,
+        height: 48,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                hasValue ? value : hint,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: hasValue ? const Color(0xFF333333) : const Color(0xFFBDBDBD),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-          ),
-        ],
-      ],
+            const Icon(
+              Icons.search_rounded,
+              color: Color(0xFFBDBDBD),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
