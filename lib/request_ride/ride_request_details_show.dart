@@ -1,13 +1,22 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class RideRequestDetailsShow extends StatefulWidget {
-  // ১. এই লাইনটি অ্যাড করুন
   final VoidCallback? onBackPressed;
+  final VoidCallback? onNewPressed;
+  final VoidCallback? onRequestFirstRide;
 
-  // ২. কনস্ট্রাকটরে এটি পাস করুন
-  const RideRequestDetailsShow({super.key, this.onBackPressed});
+  /// If set, only this user's ride requests are loaded.
+  final String? currentUserId;
+
+  const RideRequestDetailsShow({
+    super.key,
+    this.onBackPressed,
+    this.onNewPressed,
+    this.onRequestFirstRide,
+    this.currentUserId,
+  });
 
   @override
   State<RideRequestDetailsShow> createState() => _RideRequestDetailsShowState();
@@ -15,78 +24,133 @@ class RideRequestDetailsShow extends StatefulWidget {
 
 class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
   int _selectedTabIndex = 0;
-  final List<String> _tabs = ["All", "Pending", "Accepted", "Declined"];
+  final List<String> _tabLabels = ['All', 'Pending', 'Accepted', 'Declined'];
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _rideRequestsStream() {
+    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+        .collection('ride_request')
+        .orderBy('created_at', descending: true);
+
+    if (widget.currentUserId != null && widget.currentUserId!.isNotEmpty) {
+      query = query.where('userId', isEqualTo: widget.currentUserId);
+    }
+
+    return query.snapshots();
+  }
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> all(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) => docs;
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> pending(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) => docs.where((doc) => _statusOf(doc) == 'pending').toList();
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> accepted(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) => docs.where((doc) => _statusOf(doc) == 'accepted').toList();
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> declined(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) => docs.where((doc) => _statusOf(doc) == 'declined').toList();
+
+  String _statusOf(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+    return (doc.data()['status'] ?? 'pending').toString().toLowerCase();
+  }
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _filterByTab(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    switch (_selectedTabIndex) {
+      case 1:
+        return pending(docs);
+      case 2:
+        return accepted(docs);
+      case 3:
+        return declined(docs);
+      default:
+        return all(docs);
+    }
+  }
+
+  int _countForTab(
+    int index,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    switch (index) {
+      case 1:
+        return pending(docs).length;
+      case 2:
+        return accepted(docs).length;
+      case 3:
+        return declined(docs).length;
+      default:
+        return all(docs).length;
+    }
+  }
+
+  Future<void> _cancelRequest(String docId) async {
+    await FirebaseFirestore.instance
+        .collection('ride_request')
+        .doc(docId)
+        .update({'status': 'declined'});
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildHeader(),
-            _buildTabs(),
-            const SizedBox(height: 16),
             Expanded(
-              // Firebase StreamBuilder ekhane
-              child: StreamBuilder<QuerySnapshot>(
-                // Apni chaile .where('userId', isEqualTo: widget.currentUserId) add korte paren
-                stream: FirebaseFirestore.instance
-                    .collection('ride_request')
-                    .orderBy('created_at', descending: true)
-                    .snapshots(),
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _rideRequestsStream(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
-                    return const Center(child: Text("Error loading data"));
-                  }
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  // Data ashar por list nilam
-                  var allRequests = snapshot.data?.docs ?? [];
-
-                  // Tab onujayi data filter kora
-                  var filteredRequests = allRequests.where((doc) {
-                    if (_selectedTabIndex == 0) return true; // All
-
-                    String status = doc['status'].toString().toLowerCase();
-                    if (_selectedTabIndex == 1 && status == 'pending') {
-                      return true;
-                    }
-                    if (_selectedTabIndex == 2 && status == 'accepted') {
-                      return true;
-                    }
-                    if (_selectedTabIndex == 3 && status == 'declined') {
-                      return true;
-                    }
-
-                    return false;
-                  }).toList();
-
-                  if (filteredRequests.isEmpty) {
                     return const Center(
                       child: Text(
-                        "No ride requests found.",
+                        'Error loading data',
                         style: TextStyle(color: Colors.grey),
                       ),
                     );
                   }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: filteredRequests.length,
-                    itemBuilder: (context, index) {
-                      var docData =
-                          filteredRequests[index].data()
-                              as Map<String, dynamic>;
-                      String docId = filteredRequests[index].id;
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _buildRideCard(docId, docData),
-                      );
-                    },
+                  final allDocs = snapshot.data?.docs ?? [];
+                  final filtered = _filterByTab(allDocs);
+
+                  return Column(
+                    children: [
+                      _buildSubtitle(allDocs.length),
+                      _buildTabs(allDocs),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: filtered.isEmpty
+                            ? _buildEmptyState(allDocs.isEmpty)
+                            : ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  24,
+                                ),
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  final doc = filtered[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: _buildRideCard(doc.id, doc.data()),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -97,59 +161,66 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
     );
   }
 
-  // ... _buildHeader() ebong _buildTabs() aager motoy thakbe ...
-  // (Space bachanor jonno ekhane skip korlam, apni aager code theke nite parben.
-  // Shudhu tab er nam theke count soraye diyechen jate dynamic vabe data ashe)
+  Widget _buildSubtitle(int totalCount) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 68, right: 16, bottom: 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          '$totalCount total request${totalCount == 1 ? '' : 's'}',
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                  onPressed: () {
-                    // ৩. এখানে লজিক চেঞ্জ করা হলো
-                    if (widget.onBackPressed != null) {
-                      widget.onBackPressed!(); // Home Screen-এ ব্যাক করার জন্য
-                    } else {
-                      Navigator.pop(context);
-                    }
-                  },
-                ),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black87),
+              onPressed: () {
+                if (widget.onBackPressed != null) {
+                  widget.onBackPressed!();
+                } else {
+                  Navigator.pop(context);
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'My Ride Requests',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
-              const SizedBox(width: 12),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "My Ride Requests",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
           ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: widget.onNewPressed,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade600,
+              backgroundColor: const Color(0xFF2563EB),
               foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
-            icon: const Icon(Icons.send, size: 16),
+            icon: const Icon(Icons.send_rounded, size: 16),
             label: const Text(
-              "New",
-              style: TextStyle(fontWeight: FontWeight.bold),
+              'New',
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -157,35 +228,39 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
     );
   }
 
-  Widget _buildTabs() {
+  Widget _buildTabs(List<QueryDocumentSnapshot<Map<String, dynamic>>> allDocs) {
     return SizedBox(
-      height: 40,
+      height: 44,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _tabs.length,
+        itemCount: _tabLabels.length,
         itemBuilder: (context, index) {
-          bool isSelected = _selectedTabIndex == index;
+          final isSelected = _selectedTabIndex == index;
+          final count = _countForTab(index, allDocs);
+          final label = '${_tabLabels[index]} ($count)';
+
           return GestureDetector(
             onTap: () => setState(() => _selectedTabIndex = index),
             child: Container(
               margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: isSelected ? Colors.blue.shade600 : Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+                borderRadius: BorderRadius.circular(22),
                 border: Border.all(
                   color: isSelected
-                      ? Colors.blue.shade600
+                      ? const Color(0xFF2563EB)
                       : Colors.grey.shade300,
                 ),
               ),
               alignment: Alignment.center,
               child: Text(
-                _tabs[index],
+                label,
                 style: TextStyle(
                   color: isSelected ? Colors.white : Colors.grey.shade600,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 13,
                 ),
               ),
             ),
@@ -195,36 +270,96 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
     );
   }
 
-  // Dynamic Card Widget
+  Widget _buildEmptyState(bool noRequestsAtAll) {
+    final tabName = _tabLabels[_selectedTabIndex].toLowerCase();
+    final message = noRequestsAtAll
+        ? 'No requests yet'
+        : 'No $tabName requests';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.send_rounded,
+                size: 40,
+                color: Colors.grey.shade300,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              message,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade500,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (noRequestsAtAll) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: widget.onRequestFirstRide ?? widget.onNewPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'Request Your First Ride',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRideCard(String docId, Map<String, dynamic> data) {
-    // Firebase theke data nilam
-    String pickup = data['pickup_location'] ?? 'Unknown';
-    String dropoff = data['dropoff_location'] ?? 'Unknown';
-    int price = data['max_price'] ?? 0;
-    int passengers = data['passengers'] ?? 1;
-    String status = data['status'] ?? 'pending';
-    String notes = data['notes'] ?? '';
+    final pickup = data['pickup_location']?.toString() ?? 'Unknown';
+    final dropoff = data['dropoff_location']?.toString() ?? 'Unknown';
+    final price = data['max_price'] ?? 0;
+    final passengers = data['passengers'] ?? 1;
+    final status = (data['status'] ?? 'pending').toString().toLowerCase();
+    final notes = data['notes']?.toString() ?? '';
 
-    // Date Time Formatting
-    DateTime createdAt = (data['created_at'] as Timestamp).toDate();
-    DateTime rideTime = (data['ride_time'] as Timestamp).toDate();
+    final createdAt =
+        (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final rideTime =
+        (data['ride_time'] as Timestamp?)?.toDate() ?? DateTime.now();
 
-    String formattedCreatedAt = DateFormat('MMM d, h:mm a').format(createdAt);
-    String formattedRideDate = DateFormat('MMM d').format(rideTime);
-    String formattedRideTime = DateFormat('h:mm a').format(rideTime);
+    final formattedCreatedAt = DateFormat('MMM d, h:mm a').format(createdAt);
+    final formattedRideDate = DateFormat('MMM d').format(rideTime);
+    final formattedRideTime = DateFormat('h:mm a').format(rideTime);
 
-    // Status onujayi UI color
     Color headerColor = Colors.orange.shade500;
-    String statusText = "Waiting for driver";
+    String statusText = 'Waiting for driver';
     IconData statusIcon = Icons.hourglass_bottom;
 
     if (status == 'accepted') {
       headerColor = Colors.green.shade600;
-      statusText = "Ride Accepted";
+      statusText = 'Ride Accepted';
       statusIcon = Icons.check_circle_outline;
     } else if (status == 'declined') {
       headerColor = Colors.red.shade500;
-      statusText = "Ride Declined";
+      statusText = 'Ride Declined';
       statusIcon = Icons.cancel_outlined;
     }
 
@@ -234,18 +369,17 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
+            color: Colors.grey.withValues(alpha: 0.12),
             blurRadius: 10,
-            spreadRadius: 2,
+            spreadRadius: 1,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: headerColor.withOpacity(0.3), width: 1),
+        border: Border.all(color: headerColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Dynamic Header Color & Status
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -282,13 +416,11 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
               ],
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Dynamic Locations
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -330,10 +462,7 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 20),
-
-                // Dynamic Info Boxes
                 Row(
                   children: [
                     Expanded(
@@ -348,8 +477,8 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
                     Expanded(
                       child: _buildInfoBox(
                         Icons.people_outline,
-                        "$passengers",
-                        "seats",
+                        '$passengers',
+                        'seats',
                         Colors.grey.shade50,
                       ),
                     ),
@@ -357,16 +486,14 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
                     Expanded(
                       child: _buildInfoBox(
                         Icons.payments_outlined,
-                        "৳$price",
-                        "max",
+                        '৳$price',
+                        'max',
                         Colors.green.shade50,
                         iconColor: Colors.teal,
                       ),
                     ),
                   ],
                 ),
-
-                // Dynamic Notes (Jodi notes faka na thake taholei dekhabe)
                 if (notes.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Container(
@@ -389,18 +516,12 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
                     ),
                   ),
                 ],
-
-                const SizedBox(height: 16),
-
-                // Cancel Button (Shudhu pending thaklei cancel kora jabe)
-                if (status == 'pending')
+                if (status == 'pending') ...[
+                  const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        // Cancel logic ekhane add korun
-                        // FirebaseFirestore.instance.collection('ride_request').doc(docId).update({'status': 'declined'});
-                      },
+                      onPressed: () => _cancelRequest(docId),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         side: BorderSide(color: Colors.red.shade200),
@@ -411,7 +532,7 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
                       ),
                       icon: const Icon(Icons.delete_outline, color: Colors.red),
                       label: const Text(
-                        "Cancel Request",
+                        'Cancel Request',
                         style: TextStyle(
                           color: Colors.red,
                           fontWeight: FontWeight.bold,
@@ -420,6 +541,7 @@ class _RideRequestDetailsShowState extends State<RideRequestDetailsShow> {
                       ),
                     ),
                   ),
+                ],
               ],
             ),
           ),
