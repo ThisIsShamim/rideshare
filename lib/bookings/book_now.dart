@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class BookRideScreen extends StatefulWidget {
-  final String rideId; // List page theke ride-er ID pathate hobe
+  final String rideId;
 
   const BookRideScreen({super.key, required this.rideId});
 
@@ -12,279 +12,812 @@ class BookRideScreen extends StatefulWidget {
 }
 
 class _BookRideScreenState extends State<BookRideScreen> {
-  int seatCount = 1;
-  String selectedPayment = "Cash";
-  Map<String, dynamic>? rideData;
-  Map<String, dynamic>? driverData;
-  bool isLoading = true;
+  int _seatsToBook = 1;
+  bool _isBooking = false;
+  String _selectedPaymentMethod = "Cash"; // Default selection
+
+  // এই ভেরিয়েবলটি ডাটা একবার ফেচ করে সেভ করে রাখবে
+  late Future<DocumentSnapshot> _rideFuture;
+
+  // Premium UI Color Palette
+  final Color primaryColor = const Color(0xFF1A69FF);
+  final Color secondaryColor = const Color(0xFF0A1931);
+  final Color backgroundColor = const Color(0xFFF9FAFC);
+  final Color cardColor = Colors.white;
+
+  // Payment Methods Configuration List
+  final List<Map<String, dynamic>> _paymentMethods = [
+    {"id": "Cash", "title": "Cash on Ride", "icon": Icons.payments_rounded},
+    {
+      "id": "bKash",
+      "title": "bKash Wallet",
+      "icon": Icons.account_balance_wallet_rounded,
+    },
+    {"id": "Nagad", "title": "Nagad Wallet", "icon": Icons.wallet_rounded},
+  ];
 
   @override
   void initState() {
     super.initState();
-    _fetchFullDetails();
+    // initState-এর ভেতরে Future কল করলে এটি মাত্র একবারই রান হবে
+    _rideFuture = FirebaseFirestore.instance
+        .collection('rides')
+        .doc(widget.rideId)
+        .get();
   }
 
-  // Firestore theke ride ebong driver er details fetch kora
-  Future<void> _fetchFullDetails() async {
+  Future<void> _confirmBookingTransaction({
+    required Map<String, dynamic> rideData,
+  }) async {
+    setState(() => _isBooking = true);
+
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final String currentUserId =
+        FirebaseAuth.instance.currentUser?.uid ?? "UNKNOWN_USER";
+    final DocumentReference rideRef = firestore
+        .collection('rides')
+        .doc(widget.rideId);
+    final DocumentReference bookingRef = firestore.collection('bookings').doc();
+
     try {
-      // 1. Rides collection theke data ana
-      var rideDoc = await FirebaseFirestore.instance
-          .collection('rides')
-          .doc(widget.rideId)
-          .get();
+      await firestore.runTransaction((transaction) async {
+        DocumentSnapshot rideSnapshot = await transaction.get(rideRef);
 
-      if (rideDoc.exists) {
-        rideData = rideDoc.data();
-        
-        // 2. Driver-er ID use kore users collection theke details ana
-        var driverDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(rideData!['driverId'])
-            .get();
-
-        if (driverDoc.exists) {
-          driverData = driverDoc.data();
+        if (!rideSnapshot.exists) {
+          throw Exception("The requested ride could not be found!");
         }
+
+        int currentAvailableSeats = rideSnapshot['availableSeats'] ?? 0;
+
+        if (currentAvailableSeats < _seatsToBook) {
+          throw Exception(
+            "Not enough seats available! Only $currentAvailableSeats seats are left.",
+          );
+        }
+
+        int newAvailableSeats = currentAvailableSeats - _seatsToBook;
+        int pricePerSeat = rideSnapshot['pricePerSeat'] ?? 0;
+        int totalPrice = _seatsToBook * pricePerSeat;
+
+        transaction.update(rideRef, {
+          'availableSeats': newAvailableSeats,
+          if (newAvailableSeats == 0) 'status': 'inactive',
+        });
+
+        transaction.set(bookingRef, {
+          'createdAt': FieldValue.serverTimestamp(),
+          'driverId': rideSnapshot['driverId'] ?? '',
+          'fromLocation': rideSnapshot['fromLocation'] ?? '',
+          'passengerId': currentUserId,
+          'paymentMethod': _selectedPaymentMethod,
+          'rideId': widget.rideId,
+          'seatsBooked': _seatsToBook,
+          'status': 'confirmed',
+          'toLocation': rideSnapshot['toLocation'] ?? '',
+          'totalPrice': totalPrice,
+        });
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Booking confirmed successfully!'),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        Navigator.pop(context);
       }
     } catch (e) {
-      debugPrint("Error fetching data: $e");
-    } finally {
       if (mounted) {
-        setState(() => isLoading = false);
+        _showErrorDialog(e.toString().replaceAll("Exception: ", ""));
       }
+    } finally {
+      if (mounted) setState(() => _isBooking = false);
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.redAccent, size: 28),
+            SizedBox(width: 10),
+            Text(
+              "Booking Failed",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 15, color: Colors.black87),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              "OK",
+              style: TextStyle(
+                color: primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    if (rideData == null) {
-      return const Scaffold(body: Center(child: Text("Ride not found!")));
-    }
-
-    // Firebase theke data variables-e nawa
-    final String from = rideData!['fromLocation'] ?? "N/A";
-    final String to = rideData!['toLocation'] ?? "N/A";
-    final int pricePerSeat = rideData!['pricePerSeat'] ?? 0;
-    final int availableSeats = rideData!['availableSeats'] ?? 0;
-    final double distance = (rideData!['distance'] ?? 0.0).toDouble();
-    
-    // Time formatting
-    DateTime departure = (rideData!['departureTime'] as Timestamp).toDate();
-    String formattedTime = DateFormat('dd MMM, h:mm a').format(departure);
-
     return Scaffold(
-      backgroundColor: const Color(0xffF1F4F8),
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+        title: const Text(
+          "Confirm Booking",
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            letterSpacing: 0.3,
+          ),
         ),
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Book Your Ride", style: TextStyle(color: Color(0xff2962FF), fontWeight: FontWeight.bold, fontSize: 20)),
-            Text("Review and confirm your booking", style: TextStyle(color: Colors.grey, fontSize: 12)),
-          ],
+        backgroundColor: cardColor,
+        foregroundColor: secondaryColor,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(color: Colors.grey.withOpacity(0.15), height: 1.0),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- Ride Details Section ---
-            _buildSectionHeader(Icons.location_on_outlined, "Ride Details"),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: _cardDecoration(),
-              child: Column(
-                children: [
-                  _buildRouteInfo(from, to),
-                  const SizedBox(height: 20),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    childAspectRatio: 2.2,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    children: [
-                      _buildInfoTile(Icons.access_time, "Departure", formattedTime),
-                      _buildInfoTile(Icons.people_outline, "Available", "$availableSeats seat(s)"),
-                      _buildInfoTile(Icons.near_me_outlined, "Distance", "$distance km"),
-                      _buildInfoTile(Icons.directions_car, "Vehicle", rideData!['vehicleType'] ?? "Car"),
-                    ],
-                  ),
-                ],
+      body: FutureBuilder<DocumentSnapshot>(
+        // এখানে সরাসরি কল করার বদলে আমরা _rideFuture ভেরিয়েবলটি ব্যবহার করেছি
+        future: _rideFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(color: primaryColor),
+            );
+          }
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const Center(
+              child: Text(
+                "Ride details are missing or unavailable.",
+                style: TextStyle(fontSize: 15, color: Colors.grey),
               ),
-            ),
+            );
+          }
 
-            const SizedBox(height: 20),
+          final rideData = snapshot.data!.data() as Map<String, dynamic>;
+          int maxAvailableSeats = rideData['availableSeats'] ?? 0;
+          int pricePerSeat = rideData['pricePerSeat'] ?? 0;
 
-            // --- Driver Information (Dynamic) ---
-            const Text("Driver Information", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: _cardDecoration(),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 25,
-                    backgroundColor: const Color(0xff2962FF),
-                    child: Text(driverData?['fullname']?[0].toUpperCase() ?? "D", style: const TextStyle(color: Colors.white, fontSize: 20)),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(driverData?['fullname'] ?? "Loading...", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const Row(
+                      // 1. Premium Ride Timeline Card
+                      Container(
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "RIDE ROUTE",
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.grey[400],
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Column(
+                                  children: [
+                                    Icon(
+                                      Icons.radio_button_checked_rounded,
+                                      color: primaryColor,
+                                      size: 20,
+                                    ),
+                                    Container(
+                                      width: 2,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            primaryColor.withOpacity(0.5),
+                                            Colors.redAccent.withOpacity(0.5),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.location_on_rounded,
+                                      color: Colors.redAccent,
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Pickup Location",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[500],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        rideData['fromLocation'] ??
+                                            'Unknown Start',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: secondaryColor,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 30),
+                                      Text(
+                                        "Dropoff Location",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[500],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        rideData['toLocation'] ??
+                                            'Unknown Destination',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: secondaryColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20.0),
+                              child: Divider(height: 1, thickness: 0.8),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildInfoChip(
+                                  Icons.airline_seat_recline_normal_rounded,
+                                  "$maxAvailableSeats Seats Left",
+                                  Colors.amber[50]!,
+                                  Colors.amber[800]!,
+                                ),
+                                _buildInfoChip(
+                                  Icons.ac_unit_rounded,
+                                  rideData['hasAC'] == true
+                                      ? "AC Vehicle"
+                                      : "Non-AC Vehicle",
+                                  rideData['hasAC'] == true
+                                      ? Colors.blue[50]!
+                                      : Colors.grey[100]!,
+                                  rideData['hasAC'] == true
+                                      ? Colors.blue[700]!
+                                      : Colors.grey[600]!,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 2. Interactive Seat Count Selector
+                      Text(
+                        "SELECT SEATS",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey[400],
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.grey.withOpacity(0.15),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Number of Seats",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: secondaryColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Price per seat remains constant",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: backgroundColor,
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: Row(
+                                children: [
+                                  _buildCounterButton(
+                                    icon: Icons.remove_rounded,
+                                    onPressed: _seatsToBook > 1
+                                        ? () => setState(() => _seatsToBook--)
+                                        : null,
+                                  ),
+                                  Container(
+                                    constraints: const BoxConstraints(
+                                      minWidth: 40,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      "$_seatsToBook",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: secondaryColor,
+                                      ),
+                                    ),
+                                  ),
+                                  _buildCounterButton(
+                                    icon: Icons.add_rounded,
+                                    onPressed: _seatsToBook < maxAvailableSeats
+                                        ? () => setState(() => _seatsToBook++)
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 3. Payment Method Section
+                      Text(
+                        "SELECT PAYMENT METHOD",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey[400],
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _paymentMethods.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final method = _paymentMethods[index];
+                          final bool isSelected =
+                              _selectedPaymentMethod == method['id'];
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                _selectedPaymentMethod = method['id'] as String;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                color: cardColor,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? primaryColor
+                                      : Colors.grey.withOpacity(0.15),
+                                  width: isSelected ? 2 : 1,
+                                ),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: primaryColor.withOpacity(0.04),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? primaryColor.withOpacity(0.1)
+                                          : backgroundColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      method['icon'] as IconData,
+                                      color: isSelected
+                                          ? primaryColor
+                                          : Colors.grey[600],
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(
+                                      method['title'] as String,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? secondaryColor
+                                            : Colors.grey[700],
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    isSelected
+                                        ? Icons.check_circle_rounded
+                                        : Icons.radio_button_off_rounded,
+                                    color: isSelected
+                                        ? primaryColor
+                                        : Colors.grey[300],
+                                    size: 22,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 4. Invoice Breakdown Section
+                      Text(
+                        "PRICE SUMMARY",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey[400],
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.grey.withOpacity(0.15),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildPriceRow(
+                              "Seat Fare (৳$pricePerSeat × $_seatsToBook)",
+                              "৳${_seatsToBook * pricePerSeat}",
+                            ),
+                            const SizedBox(height: 12),
+                            _buildPriceRow("Booking Fee", "FREE", isFree: true),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16.0),
+                              child: _DashedDivider(),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Total Payable",
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: secondaryColor,
+                                  ),
+                                ),
+                                Text(
+                                  "৳${_seatsToBook * pricePerSeat}",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // 5. Fixed Premium Action Footer Panel
+              Container(
+                padding: const EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  bottom: 34,
+                  top: 20,
+                ),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, -6),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.star, color: Colors.orange, size: 16),
-                          Text(" 4.5", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.orange)),
-                          Text(" - Active Driver", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                          Text(
+                            "Total Cost",
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "৳${_seatsToBook * pricePerSeat}",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: secondaryColor,
+                            ),
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // --- Booking Information ---
-            _buildSectionHeader(Icons.check_circle_outline, "Booking Information"),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: _cardDecoration(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Number of Seats *", style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildCounterBtn(Icons.remove, () => setState(() => seatCount > 1 ? seatCount-- : null)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text("$seatCount", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                      ),
-                      _buildCounterBtn(Icons.add, () => setState(() => seatCount < availableSeats ? seatCount++ : null)),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  const Text("Contact Number *", style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    decoration: InputDecoration(
-                      hintText: "Enter your phone number",
-                      prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text("Payment Method *", style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    childAspectRatio: 2.2,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    children: [
-                      _paymentTile("Cash", Icons.account_balance_wallet_outlined),
-                      _paymentTile("bKash", Icons.smartphone),
-                      _paymentTile("Nagad", Icons.move_to_inbox),
-                      _paymentTile("Card", Icons.credit_card),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // --- Summary (Dynamic) ---
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xff2962FF), Color(0xff6A11CB)]),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-                  _summaryRow("Price per seat", "Tk $pricePerSeat"),
-                  _summaryRow("Seats", "x $seatCount"),
-                  const Divider(color: Colors.white30),
-                  _summaryRow("Total Amount", "Tk ${pricePerSeat * seatCount}", isTotal: true),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // --- Confirm Button ---
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: () => _handleBooking(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xff2962FF),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    Expanded(
+                      flex: 2,
+                      child: SizedBox(
+                        height: 56,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: _isBooking || maxAvailableSeats == 0
+                              ? null
+                              : () => _confirmBookingTransaction(
+                                  rideData: rideData,
+                                ),
+                          child: _isBooking
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Text(
+                                  "Confirm Booking",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                child: const Text("Confirm Booking", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
               ),
-            ),
-          ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCounterButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+  }) {
+    final bool isEnabled = onPressed != null;
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(30),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isEnabled ? Colors.white : Colors.grey[200],
+          boxShadow: isEnabled
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: isEnabled ? primaryColor : Colors.grey[400],
         ),
       ),
     );
   }
 
-  // Booking confirm kore database-e save kora
-  Future<void> _handleBooking() async {
-    try {
-      await FirebaseFirestore.instance.collection('bookings').add({
-        'rideId': widget.rideId,
-        'driverId': rideData!['driverId'],
-        'passengerId': 'CURRENT_USER_ID', // FirebaseAuth.instance.currentUser!.uid
-        'fromLocation': rideData!['fromLocation'],
-        'toLocation': rideData!['toLocation'],
-        'seatsBooked': seatCount,
-        'totalPrice': (rideData!['pricePerSeat'] ?? 0) * seatCount,
-        'status': 'confirmed',
-        'paymentMethod': selectedPayment,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Booking Confirmed!")));
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-    }
+  Widget _buildInfoChip(
+    IconData icon,
+    String label,
+    Color bgColor,
+    Color textColor,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: textColor),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: textColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  // --- Helper Methods ---
-  Widget _buildSectionHeader(IconData icon, String title) => Row(children: [Icon(icon, color: const Color(0xff2962FF), size: 20), const SizedBox(width: 8), Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))]);
-  BoxDecoration _cardDecoration() => BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)]);
-  Widget _buildRouteInfo(String f, String t) => Row(children: [const Column(children: [Icon(Icons.circle, color: Colors.green, size: 14), Icon(Icons.more_vert, color: Colors.grey), Icon(Icons.circle, color: Colors.red, size: 14)]), const SizedBox(width: 12), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(f, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)), const SizedBox(height: 15), Text(t, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))])]);
-  Widget _buildInfoTile(IconData i, String l, String v) => Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)), child: Row(children: [Icon(i, size: 16, color: Colors.grey[600]), const SizedBox(width: 8), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(l, style: const TextStyle(fontSize: 9, color: Colors.grey)), Text(v, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold))]))]));
-  Widget _buildCounterBtn(IconData i, VoidCallback o) => GestureDetector(onTap: o, child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)), child: Icon(i, size: 18)));
-  Widget _paymentTile(String t, IconData i) { bool s = selectedPayment == t; return GestureDetector(onTap: () => setState(() => selectedPayment = t), child: Container(decoration: BoxDecoration(border: Border.all(color: s ? Colors.green : Colors.grey[200]!), borderRadius: BorderRadius.circular(12), color: s ? Colors.green.withOpacity(0.05) : Colors.white), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(i, size: 20, color: s ? Colors.green : Colors.grey), Text(t, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: s ? Colors.green : Colors.grey))]))); }
-  Widget _summaryRow(String t, String v, {bool isTotal = false}) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(t, style: TextStyle(color: Colors.white, fontSize: isTotal ? 18 : 14)), Text(v, style: TextStyle(color: Colors.white, fontSize: isTotal ? 22 : 14, fontWeight: FontWeight.bold))]));
+  Widget _buildPriceRow(String title, String amount, {bool isFree = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          amount,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: isFree ? Colors.green[600] : secondaryColor,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Custom Painter for a Clean Dashed Line
+class _DashedDivider extends StatelessWidget {
+  const _DashedDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boxWidth = constraints.constrainWidth();
+        const dashWidth = 5.0;
+        const dashHeight = 1.0;
+        final dashCount = (boxWidth / (2 * dashWidth)).floor();
+        return Flex(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          direction: Axis.horizontal,
+          children: List.generate(dashCount, (_) {
+            return const SizedBox(
+              width: dashWidth,
+              height: dashHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: Color(0xFFE0E0E0)),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
 }
