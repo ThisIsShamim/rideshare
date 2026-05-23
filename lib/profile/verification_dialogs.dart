@@ -391,12 +391,13 @@ class VerificationDialogs {
                             borderRadius: BorderRadius.circular(12),
                             onTap: () async {
                               try {
-                                FilePickerResult? result =
-                                    await FilePicker.platform.pickFiles(
-                                  type: FileType.custom,
-                                  allowedExtensions: ['jpg', 'jpeg', 'png'],
-                                  allowMultiple: false,
-                                );
+                                FilePickerResult? result = await FilePicker
+                                    .platform
+                                    .pickFiles(
+                                      type: FileType.custom,
+                                      allowedExtensions: ['jpg', 'jpeg', 'png'],
+                                      allowMultiple: false,
+                                    );
                                 if (result != null && result.files.isNotEmpty) {
                                   setModalState(() {
                                     pickedProfilePhotoName =
@@ -404,8 +405,7 @@ class VerificationDialogs {
                                   });
                                 }
                               } catch (e) {
-                                debugPrint(
-                                    'Profile photo picker failed: $e');
+                                debugPrint('Profile photo picker failed: $e');
                               }
                             },
                             child: Container(
