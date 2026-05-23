@@ -7,7 +7,9 @@ import './widgets/seats_pricing_section_widget.dart';
 import './widgets/vehicle_section_widget.dart';
 
 class PostARideScreen extends StatefulWidget {
-  const PostARideScreen({super.key});
+  final String? userGender; // <-- নতুন ভেরিয়েবল অ্যাড করুন
+
+  const PostARideScreen({super.key, this.userGender});
 
   @override
   State<PostARideScreen> createState() => _PostARideScreenState();
@@ -339,7 +341,26 @@ class _PostARideScreenState extends State<PostARideScreen> {
           isFemaleOnly: _isFemaleOnly,
           onSeatsChanged: (v) => setState(() => _totalSeats = v),
           onPriceChanged: (v) => setState(() => _pricePerSeat = v),
-          onFemaleOnlyChanged: (v) => setState(() => _isFemaleOnly = v),
+          // --- এখানে লজিক আপডেট করা হলো ---
+          onFemaleOnlyChanged: (v) {
+            if (widget.userGender == 'female' || widget.userGender == 'f') {
+              setState(() => _isFemaleOnly = v);
+            } else {
+              // ইউজার Male হলে টগল হবে না এবং ওয়ার্নি่ง দেখাবে
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Sorry! Male users cannot post Female-Only rides.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  backgroundColor: Colors.redAccent,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
         );
       default:
         return const SizedBox.shrink();

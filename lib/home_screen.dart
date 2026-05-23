@@ -103,17 +103,20 @@ class _HomeScreenState extends State<HomeScreen> {
           ? null
           : _buildAppBar(),
       body: _buildBodyContent(),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF1A69FF),
-        shape: const CircleBorder(),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const PostARideScreen()),
-          );
-        },
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
+floatingActionButton: FloatingActionButton(
+  backgroundColor: const Color(0xFF1A69FF),
+  shape: const CircleBorder(),
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        // এখানে 'const' থাকবে না এবং _userGender পাস হবে
+        builder: (context) => PostARideScreen(userGender: _userGender),
       ),
+    );
+  },
+  child: const Icon(Icons.add, color: Colors.white, size: 30),
+),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _buildBottomNav(context),
     );
@@ -211,9 +214,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
               final allRides = snapshot.data!.docs;
 
-              // <-- এখানে রিয়েল-টাইম ফিল্টার অ্যাড করা হলো (যাতে সময় পার হলে সাথে সাথে গায়েব হয়)
               final rides = allRides.where((doc) {
                 final data = doc.data() as Map<String, dynamic>;
+
+                // --- নতুন লজিক: Female Only রাইড শুধুমাত্র Female-দের জন্য ---
+                final bool isFemaleOnly = data['isFemaleOnly'] ?? false;
+                if (isFemaleOnly &&
+                    _userGender != 'female' &&
+                    _userGender != 'f') {
+                  return false; // Male বা অন্য জেন্ডারের হলে এই রাইড লিস্টে দেখাবে না
+                }
+                // --------------------------------------------------------
+
                 final departureData = data['departureTime'];
 
                 if (departureData != null) {
@@ -486,35 +498,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          if (!_isLoadingGender &&
-              (_userGender == 'female' || _userGender == 'f')) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 16,
-                    color: Colors.grey.shade600,
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      "Female Only rides are hidden from your results for safety.",
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
 
           Wrap(
             spacing: 8,

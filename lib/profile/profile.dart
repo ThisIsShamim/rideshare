@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rideshare/profile/wallet_screen.dart';
 import 'package:rideshare/profile/verification_dialogs.dart'; // আপনার সঠিক পাথ অনুযায়ী ইমপোর্ট করুন
+import '../login_screen.dart'; // আপনার ফাইলের সঠিক পাথ দিন
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -311,8 +312,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Center(
                     child: TextButton(
                       onPressed: () async {
-                        await FirebaseAuth.instance.signOut();
-                        // Navigate to login screen if necessary
+                        try {
+                          // ১. ফায়ারবেস থেকে ইউজারকে সাইন-আউট করা
+                          await FirebaseAuth.instance.signOut();
+
+                          // ২. লগিন পেজে পাঠানো এবং পেছনের সব স্ক্রিন রিমুভ করে দেওয়া
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const LoginScreen(), // আপনার লগিন পেজের ক্লাসের নাম দিন
+                              ),
+                              (route) =>
+                                  false, // এটি ব্যাকগ্রাউন্ডের সব পেজ মুছে ফেলবে
+                            );
+                          }
+                        } catch (e) {
+                          print("Logout Error: $e");
+                        }
                       },
                       child: const Text(
                         "Logout",
