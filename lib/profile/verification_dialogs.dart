@@ -129,7 +129,8 @@ class VerificationDialogs {
     TextEditingController idController = TextEditingController();
     String? selectedRole;
     int currentPage = 1; // 1: Info & Selection, 2: ID & Upload
-    String? pickedFileName; 
+    String? pickedProfilePhotoName;
+    String? pickedFileName;
 
     showDialog(
       context: context,
@@ -139,12 +140,15 @@ class VerificationDialogs {
         return StatefulBuilder(
           builder: (context, setModalState) {
             bool isStudent = selectedRole == 'Student';
-            String idLabelText =
-                isStudent ? "Student ID Number *" : "Job ID Number *";
-            String idHintText =
-                isStudent ? "e.g., 2021-1-60-001" : "e.g., FAC-2023-001";
-            String uploadHintText =
-                isStudent ? "Click to upload Student ID" : "Click to upload Job ID";
+            String idLabelText = isStudent
+                ? "Student ID Number *"
+                : "Job ID Number *";
+            String idHintText = isStudent
+                ? "e.g., 2021-1-60-001"
+                : "e.g., FAC-2023-001";
+            String uploadHintText = isStudent
+                ? "Click to upload Student ID"
+                : "Click to upload Job ID";
 
             return Dialog(
               shape: RoundedRectangleBorder(
@@ -238,7 +242,9 @@ class VerificationDialogs {
                               ),
                               const SizedBox(height: 6),
                               _buildCheckItem("Build trust with other users"),
-                              _buildCheckItem("Access to all RideShare features"),
+                              _buildCheckItem(
+                                "Access to all RideShare features",
+                              ),
                               _buildCheckItem("Enhanced safety for everyone"),
                             ],
                           ),
@@ -347,7 +353,8 @@ class VerificationDialogs {
                           width: double.infinity,
                           height: 48,
                           child: ElevatedButton(
-                            onPressed: (selectedRole != null &&
+                            onPressed:
+                                (selectedRole != null &&
                                     uniController.text.isNotEmpty &&
                                     deptController.text.isNotEmpty)
                                 ? () {
@@ -375,6 +382,81 @@ class VerificationDialogs {
                           ),
                         ),
                       ] else ...[
+                        // Profile Photo Upload Card
+                        _buildFieldLabel("Upload Profile Photo *"),
+                        Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () async {
+                              try {
+                                FilePickerResult? result = await FilePicker
+                                    .platform
+                                    .pickFiles(
+                                      type: FileType.custom,
+                                      allowedExtensions: ['jpg', 'jpeg', 'png'],
+                                      allowMultiple: false,
+                                    );
+                                if (result != null && result.files.isNotEmpty) {
+                                  setModalState(() {
+                                    pickedProfilePhotoName =
+                                        result.files.single.name;
+                                  });
+                                }
+                              } catch (e) {
+                                debugPrint('Profile photo picker failed: $e');
+                              }
+                            },
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 24,
+                                horizontal: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: pickedProfilePhotoName != null
+                                      ? const Color(0xFF219653)
+                                      : const Color(0xFFE0E0E0),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    pickedProfilePhotoName != null
+                                        ? Icons.check_circle_outline
+                                        : Icons.photo_camera_outlined,
+                                    size: 32,
+                                    color: pickedProfilePhotoName != null
+                                        ? const Color(0xFF219653)
+                                        : const Color(0xFF828282),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    pickedProfilePhotoName ??
+                                        "Tap to upload profile photo",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: pickedProfilePhotoName != null
+                                          ? const Color(0xFF219653)
+                                          : const Color(0xFF828282),
+                                      fontWeight: pickedProfilePhotoName != null
+                                          ? FontWeight.w500
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
                         // ID Input Field
                         _buildFieldLabel(idLabelText),
                         TextField(
@@ -393,12 +475,18 @@ class VerificationDialogs {
                         // File Upload Card
                         _buildFieldLabel("Upload ID Card *"),
                         GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: () async {
-                            FilePickerResult? result =
-                                await FilePicker.platform.pickFiles(
-                              type: FileType.custom,
-                              allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
-                            );
+                            FilePickerResult? result = await FilePicker.platform
+                                .pickFiles(
+                                  type: FileType.custom,
+                                  allowedExtensions: [
+                                    'jpg',
+                                    'jpeg',
+                                    'png',
+                                    'pdf',
+                                  ],
+                                );
                             if (result != null) {
                               setModalState(() {
                                 pickedFileName = result.files.single.name;
@@ -489,13 +577,17 @@ class VerificationDialogs {
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF070B19),
-                                    disabledBackgroundColor: const Color(0xFFE0E0E0),
+                                    disabledBackgroundColor: const Color(
+                                      0xFFE0E0E0,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     elevation: 0,
                                   ),
-                                  onPressed: (idController.text.isNotEmpty &&
+                                  onPressed:
+                                      (idController.text.isNotEmpty &&
+                                          pickedProfilePhotoName != null &&
                                           pickedFileName != null)
                                       ? () {
                                           Navigator.pop(context);
@@ -531,7 +623,7 @@ class VerificationDialogs {
     TextEditingController nidController = TextEditingController();
     TextEditingController vehicleRegController = TextEditingController();
 
-    int currentPage = 1; 
+    int currentPage = 1;
 
     String? pickedLicenseFile;
     String? pickedNidFile;
@@ -545,11 +637,13 @@ class VerificationDialogs {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            bool isFormValid = drivingLicenseController.text.isNotEmpty &&
+            bool isFormValid =
+                drivingLicenseController.text.isNotEmpty &&
                 nidController.text.isNotEmpty &&
                 vehicleRegController.text.isNotEmpty;
 
-            bool isAllUploaded = pickedLicenseFile != null &&
+            bool isAllUploaded =
+                pickedLicenseFile != null &&
                 pickedNidFile != null &&
                 pickedVehicleRegFile != null &&
                 pickedInsuranceFile != null;
@@ -616,7 +710,10 @@ class VerificationDialogs {
                           ? "Upload Documents"
                           : "Complete verification to start posting rides",
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF828282)),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF828282),
+                      ),
                     ),
                     const SizedBox(height: 24),
 
@@ -652,8 +749,13 @@ class VerificationDialogs {
                       TextField(
                         controller: drivingLicenseController,
                         onChanged: (_) => setModalState(() {}),
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF333333)),
-                        decoration: _buildVideoInputDecoration("e.g., DHA-123456789"),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF333333),
+                        ),
+                        decoration: _buildVideoInputDecoration(
+                          "e.g., DHA-123456789",
+                        ),
                       ),
                       const SizedBox(height: 16),
                       _buildFieldLabel("NID Number *"),
@@ -661,16 +763,26 @@ class VerificationDialogs {
                         controller: nidController,
                         keyboardType: TextInputType.number,
                         onChanged: (_) => setModalState(() {}),
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF333333)),
-                        decoration: _buildVideoInputDecoration("e.g., 1234567890"),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF333333),
+                        ),
+                        decoration: _buildVideoInputDecoration(
+                          "e.g., 1234567890",
+                        ),
                       ),
                       const SizedBox(height: 16),
                       _buildFieldLabel("Vehicle Registration Number *"),
                       TextField(
                         controller: vehicleRegController,
                         onChanged: (_) => setModalState(() {}),
-                        style: const TextStyle(fontSize: 14, color: Color(0xFF333333)),
-                        decoration: _buildVideoInputDecoration("e.g., DHA-Metro-11-1234"),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF333333),
+                        ),
+                        decoration: _buildVideoInputDecoration(
+                          "e.g., DHA-Metro-11-1234",
+                        ),
                       ),
                       const SizedBox(height: 28),
                       Row(
@@ -683,7 +795,9 @@ class VerificationDialogs {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  side: const BorderSide(color: Color(0xFFE0E0E0)),
+                                  side: const BorderSide(
+                                    color: Color(0xFFE0E0E0),
+                                  ),
                                 ),
                                 onPressed: () {
                                   setModalState(() {
@@ -742,12 +856,20 @@ class VerificationDialogs {
                         icon: Icons.credit_card_rounded,
                         pickedFile: pickedLicenseFile,
                         onTap: () async {
-                          FilePickerResult? r = await FilePicker.platform.pickFiles(
-                            type: FileType.custom,
-                            allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
-                          );
+                          FilePickerResult? r = await FilePicker.platform
+                              .pickFiles(
+                                type: FileType.custom,
+                                allowedExtensions: [
+                                  'jpg',
+                                  'jpeg',
+                                  'png',
+                                  'pdf',
+                                ],
+                              );
                           if (r != null) {
-                            setModalState(() => pickedLicenseFile = r.files.single.name);
+                            setModalState(
+                              () => pickedLicenseFile = r.files.single.name,
+                            );
                           }
                         },
                       ),
@@ -758,12 +880,20 @@ class VerificationDialogs {
                         icon: Icons.assignment_ind_outlined,
                         pickedFile: pickedNidFile,
                         onTap: () async {
-                          FilePickerResult? r = await FilePicker.platform.pickFiles(
-                            type: FileType.custom,
-                            allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
-                          );
+                          FilePickerResult? r = await FilePicker.platform
+                              .pickFiles(
+                                type: FileType.custom,
+                                allowedExtensions: [
+                                  'jpg',
+                                  'jpeg',
+                                  'png',
+                                  'pdf',
+                                ],
+                              );
                           if (r != null) {
-                            setModalState(() => pickedNidFile = r.files.single.name);
+                            setModalState(
+                              () => pickedNidFile = r.files.single.name,
+                            );
                           }
                         },
                       ),
@@ -774,12 +904,20 @@ class VerificationDialogs {
                         icon: Icons.directions_car_filled_outlined,
                         pickedFile: pickedVehicleRegFile,
                         onTap: () async {
-                          FilePickerResult? r = await FilePicker.platform.pickFiles(
-                            type: FileType.custom,
-                            allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
-                          );
+                          FilePickerResult? r = await FilePicker.platform
+                              .pickFiles(
+                                type: FileType.custom,
+                                allowedExtensions: [
+                                  'jpg',
+                                  'jpeg',
+                                  'png',
+                                  'pdf',
+                                ],
+                              );
                           if (r != null) {
-                            setModalState(() => pickedVehicleRegFile = r.files.single.name);
+                            setModalState(
+                              () => pickedVehicleRegFile = r.files.single.name,
+                            );
                           }
                         },
                       ),
@@ -790,12 +928,20 @@ class VerificationDialogs {
                         icon: Icons.shield_outlined,
                         pickedFile: pickedInsuranceFile,
                         onTap: () async {
-                          FilePickerResult? r = await FilePicker.platform.pickFiles(
-                            type: FileType.custom,
-                            allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
-                          );
+                          FilePickerResult? r = await FilePicker.platform
+                              .pickFiles(
+                                type: FileType.custom,
+                                allowedExtensions: [
+                                  'jpg',
+                                  'jpeg',
+                                  'png',
+                                  'pdf',
+                                ],
+                              );
                           if (r != null) {
-                            setModalState(() => pickedInsuranceFile = r.files.single.name);
+                            setModalState(
+                              () => pickedInsuranceFile = r.files.single.name,
+                            );
                           }
                         },
                       ),
@@ -810,7 +956,9 @@ class VerificationDialogs {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  side: const BorderSide(color: Color(0xFFE0E0E0)),
+                                  side: const BorderSide(
+                                    color: Color(0xFFE0E0E0),
+                                  ),
                                   backgroundColor: Colors.white,
                                 ),
                                 onPressed: () {
@@ -933,6 +1081,7 @@ class VerificationDialogs {
           ),
           const SizedBox(height: 12),
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: onTap,
             child: Container(
               width: double.infinity,
@@ -941,7 +1090,9 @@ class VerificationDialogs {
                 color: const Color(0xFFFAFCFE),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: isUploaded ? const Color(0xFF219653) : const Color(0xFFD3DFEE),
+                  color: isUploaded
+                      ? const Color(0xFF219653)
+                      : const Color(0xFFD3DFEE),
                   width: 1.2,
                 ),
               ),
@@ -949,8 +1100,12 @@ class VerificationDialogs {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    isUploaded ? Icons.check_circle_rounded : Icons.file_upload_outlined,
-                    color: isUploaded ? const Color(0xFF219653) : const Color(0xFF8E9AA8),
+                    isUploaded
+                        ? Icons.check_circle_rounded
+                        : Icons.file_upload_outlined,
+                    color: isUploaded
+                        ? const Color(0xFF219653)
+                        : const Color(0xFF8E9AA8),
                     size: 20,
                   ),
                   const SizedBox(height: 4),
@@ -963,7 +1118,9 @@ class VerificationDialogs {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: isUploaded ? const Color(0xFF219653) : const Color(0xFF5F6E7D),
+                        color: isUploaded
+                            ? const Color(0xFF219653)
+                            : const Color(0xFF5F6E7D),
                       ),
                     ),
                   ),
@@ -992,10 +1149,7 @@ class VerificationDialogs {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF2F80ED),
-              ),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF2F80ED)),
             ),
           ),
         ],
@@ -1059,10 +1213,7 @@ class VerificationDialogs {
           isExpanded: true,
           hint: Text(
             hint,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFFBDBDBD),
-            ),
+            style: const TextStyle(fontSize: 13, color: Color(0xFFBDBDBD)),
           ),
           icon: const Icon(
             Icons.keyboard_arrow_down_rounded,
@@ -1073,10 +1224,7 @@ class VerificationDialogs {
               value: role,
               child: Row(
                 children: [
-                  Text(
-                    roleConfig[role]!,
-                    style: const TextStyle(fontSize: 18),
-                  ),
+                  Text(roleConfig[role]!, style: const TextStyle(fontSize: 18)),
                   const SizedBox(width: 10),
                   Text(
                     role,
@@ -1110,10 +1258,7 @@ class VerificationDialogs {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: const Color(0xFFE0E0E0),
-            width: 1.0,
-          ),
+          border: Border.all(color: const Color(0xFFE0E0E0), width: 1.0),
         ),
         height: 48,
         child: Row(
@@ -1124,7 +1269,9 @@ class VerificationDialogs {
                 hasValue ? value : hint,
                 style: TextStyle(
                   fontSize: 13,
-                  color: hasValue ? const Color(0xFF333333) : const Color(0xFFBDBDBD),
+                  color: hasValue
+                      ? const Color(0xFF333333)
+                      : const Color(0xFFBDBDBD),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -1144,16 +1291,10 @@ class VerificationDialogs {
   static InputDecoration _buildInputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(
-        color: Color(0xFFBDBDBD),
-        fontSize: 13,
-      ),
+      hintStyle: const TextStyle(color: Color(0xFFBDBDBD), fontSize: 13),
       filled: true,
       fillColor: const Color(0xFFF9FAFC),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: Color(0xFFF2F2F2)),
@@ -1204,9 +1345,7 @@ class VerificationDialogs {
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -1236,9 +1375,11 @@ class VerificationDialogs {
                       onChanged: (val) {
                         setSheetState(() {
                           filteredItems = allItems
-                              .where((item) => item
-                                  .toLowerCase()
-                                  .contains(val.toLowerCase()))
+                              .where(
+                                (item) => item.toLowerCase().contains(
+                                  val.toLowerCase(),
+                                ),
+                              )
                               .toList();
                         });
                       },
