@@ -10,7 +10,7 @@ Future<void> main() async {
     debugPrint('Firebase initialization failed: $error');
     debugPrint('$stackTrace');
   }
-
+  
   runApp(const MyApp());
 }
 

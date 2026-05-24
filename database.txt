@@ -1,0 +1,63 @@
+bookings collection
+
+{
+  "createdAt": "May 23, 2026 at 1:38:53 PM UTC+6",
+  "driverId": "AyrfAsPPhOXYVjCFUQHsn9LC6B83",
+  "fromLocation": "QCX6+J6W, Gulshan, Dhaka",
+  "passengerId": "AyrfAsPPhOXYVjCFUQHsn9LC6B83",
+  "paymentMethod": "Cash",
+  "rideId": "tJJMn9MLBsHDBsrkKREL",
+  "seatsBooked": 4,
+  "status": "confirmed",
+  "toLocation": "South Academic Building, Basundhara Residential Area, Dhaka",
+  "totalPrice": null
+}
+
+ride_requests collection 
+
+{
+  "created_at": "May 17, 2026 at 12:20:09 PM UTC+6",
+  "distance": "2.0 km",
+  "dropoff_location": "House 14/B Road No. 68, Gulshan, Dhaka",
+  "duration": "4 mins",
+  "max_price": 150,
+  "notes": "",
+  "passengers": 1,
+  "pickup_location": "Fetching location...",
+  "ride_time": "May 20, 2026 at 12:20:00 PM UTC+6",
+  "status": "pending",
+  "userId": null
+}
+
+rides collection 
+
+{
+  "availableSeats": 2,
+  "createdAt": "May 3, 2026 at 11:05:25 AM UTC+6",
+  "departureTime": "May 4, 2026 at 7:30:00 AM UTC+6",
+  "distance": 12.5,
+  "driverId": "AyrfAsPPhOXYVjCFUQHsn9LC6B83",
+  "fromLocation": "BUET",
+  "hasAC": false,
+  "isFemaleOnly": false,
+  "isRecurring": true,
+  "pricePerSeat": 80,
+  "status": "inactive",
+  "stops": [],
+  "toLocation": "Motijheel",
+  "totalSeats": 2,
+  "vehicleColor": "",
+  "vehicleModel": "",
+  "vehicleType": null
+}
+
+users collection
+
+{
+  "createdAt": "May 18, 2026 at 11:23:43 PM UTC+6",
+  "email": "abir@gmail.com",
+  "fullname": "MD ABIR HOSSAIN",
+  "gender": "Male",
+  "uid": "5yB0tzroF2WyPYiSz2r5oorA5ii2",
+  "usertype": null
+}

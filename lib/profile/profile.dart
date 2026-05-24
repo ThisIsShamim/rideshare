@@ -21,6 +21,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _totalRides = "0"; // Dynamically fetched from bookings
   bool _isLoading = true;
 
+  // --- নতুন যোগ করা ভেরিয়েবল ---
+  String _userVerificationStatus = "unverified";
+  String _driverVerificationStatus = "unverified";
+  //
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +43,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             .doc(currentUser.uid)
             .get();
 
+        // --- নতুন: ভেরিফিকেশন স্ট্যাটাস ফেচ করা ---
+        DocumentSnapshot userVerif = await FirebaseFirestore.instance
+            .collection('user_verifications')
+            .doc(currentUser.uid)
+            .get();
+
+        DocumentSnapshot driverVerif = await FirebaseFirestore.instance
+            .collection('driver_verifications')
+            .doc(currentUser.uid)
+            .get();
+        // ------------------------------------------
+
         if (userDoc.exists) {
           Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
           setState(() {
@@ -45,6 +62,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _email = data['email'] ?? "No email provided";
             _gender = data['gender'] ?? "N/A";
             _userType = data['usertype'] ?? "User";
+
+            // --- নতুন: স্ট্যাটাস আপডেট করা ---
+            _userVerificationStatus = userVerif.exists
+                ? userVerif.get('status')
+                : "unverified";
+            _driverVerificationStatus = driverVerif.exists
+                ? driverVerif.get('status')
+                : "unverified";
+            // ---------------------------------
+
             _isLoading = false;
           });
         } else {
@@ -108,31 +135,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   const SizedBox(height: 16),
 
-                  // --- VERIFICATION CARDS ---
                   // --- VERIFICATION CARDS IN PROFILE.DART ---
-                  _buildVerifyCard(
-                    context,
-                    "User Not Verified",
-                    "Verify to book & post rides",
-                    const Color(0xFFF2994A),
-                    const Color(0xFFFFF7EE),
-                    Icons.error,
-                    onTap: () => VerificationDialogs.showUserVerification(
+                  if (_userVerificationStatus == "unverified")
+                    _buildVerifyCard(
                       context,
-                    ), // এখানে কল করুন
-                  ),
+                      "User Not Verified",
+                      "Verify to book & post rides",
+                      const Color(0xFFF2994A),
+                      const Color(0xFFFFF7EE),
+                      Icons.error,
+                      onTap: () {
+                        VerificationDialogs.showUserVerification(context);
+                        // ডায়ালগ বন্ধ হওয়ার পর আবার ডাটা ফেচ করার জন্য:
+                        _fetchUserData();
+                      },
+                    )
+                  else if (_userVerificationStatus == "pending")
+                    _buildStatusCard(
+                      "User Identity",
+                      "Pending Approval",
+                      const Color(0xFFF2994A),
+                      Icons.access_time_filled,
+                    )
+                  else if (_userVerificationStatus == "approved")
+                    _buildStatusCard(
+                      "User Identity",
+                      "Verified",
+                      const Color(0xFF27AE60),
+                      Icons.verified_user,
+                    ),
+
                   const SizedBox(height: 12),
-                  _buildVerifyCard(
-                    context,
-                    "Driver Not Verified",
-                    "Verify to become a driver",
-                    const Color(0xFF2F80ED),
-                    const Color(0xFFF4F8FF),
-                    Icons.directions_car,
-                    onTap: () => VerificationDialogs.showDriverVerification(
+
+                  if (_driverVerificationStatus == "unverified")
+                    _buildVerifyCard(
                       context,
-                    ), // এখানে কল করুন
-                  ),
+                      "Driver Not Verified",
+                      "Verify to become a driver",
+                      const Color(0xFF2F80ED),
+                      const Color(0xFFF4F8FF),
+                      Icons.directions_car,
+                      onTap: () {
+                        VerificationDialogs.showDriverVerification(context);
+                        // ডায়ালগ বন্ধ হওয়ার পর আবার ডাটা ফেচ করার জন্য:
+                        _fetchUserData();
+                      },
+                    )
+                  else if (_driverVerificationStatus == "pending")
+                    _buildStatusCard(
+                      "Driver Status",
+                      "Pending Approval",
+                      const Color(0xFFF2994A),
+                      Icons.access_time_filled,
+                    )
+                  else if (_driverVerificationStatus == "approved")
+                    _buildStatusCard(
+                      "Driver Status",
+                      "Verified Driver",
+                      const Color(0xFF27AE60),
+                      Icons.verified_user,
+                    ),
                   const SizedBox(height: 24),
                   const Text(
                     "Quick Actions",
@@ -348,6 +410,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // --- VERIFICATION STATUS CARD ---
+  Widget _buildStatusCard(
+    String title,
+    String statusText,
+    Color color,
+    IconData icon,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Color(0xFF333333),
+                  ),
+                ),
+                Text(
+                  statusText,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -19,7 +19,11 @@ class WalletScreen extends StatelessWidget {
           children: const [
             Text(
               "My Wallet",
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
             ),
             Text(
               "Manage your balance",
@@ -42,9 +46,21 @@ class WalletScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildActionItem(Icons.add, "Add Money", const Color(0xFF27AE60)),
-                _buildActionItem(Icons.bolt, "Auto Pay", const Color(0xFF2F80ED)),
-                _buildActionItem(Icons.card_giftcard, "Rewards", const Color(0xFF9B51E0)),
+                _buildActionItem(
+                  Icons.add,
+                  "Add Money",
+                  const Color(0xFF27AE60),
+                ),
+                _buildActionItem(
+                  Icons.bolt,
+                  "Auto Pay",
+                  const Color(0xFF2F80ED),
+                ),
+                _buildActionItem(
+                  Icons.card_giftcard,
+                  "Rewards",
+                  const Color(0xFF9B51E0),
+                ),
               ],
             ),
 
@@ -56,7 +72,9 @@ class WalletScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFFFF9E7),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFF2C94C).withOpacity(0.3)),
+                border: Border.all(
+                  color: const Color(0xFFF2C94C).withOpacity(0.3),
+                ),
               ),
               child: Row(
                 children: [
@@ -80,22 +98,33 @@ class WalletScreen extends StatelessWidget {
               children: [
                 const Text(
                   "Recent Transactions",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF333333)),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF333333),
+                  ),
                 ),
                 TextButton(
                   onPressed: () {},
-                  child: const Text("View All", style: TextStyle(color: Color(0xFF2F80ED))),
+                  child: const Text(
+                    "View All",
+                    style: TextStyle(color: Color(0xFF2F80ED)),
+                  ),
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 40),
-            
+
             // Empty State
             Center(
               child: Column(
                 children: [
-                  Icon(Icons.receipt_long_outlined, size: 60, color: Colors.grey.withOpacity(0.3)),
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    size: 60,
+                    color: Colors.grey.withOpacity(0.3),
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     "No transactions yet",
@@ -135,15 +164,26 @@ class WalletScreen extends StatelessWidget {
         children: [
           Row(
             children: const [
-              Icon(Icons.account_balance_wallet_outlined, color: Colors.white70, size: 18),
+              Icon(
+                Icons.account_balance_wallet_outlined,
+                color: Colors.white70,
+                size: 18,
+              ),
               SizedBox(width: 8),
-              Text("Available Balance", style: TextStyle(color: Colors.white70, fontSize: 14)),
+              Text(
+                "Available Balance",
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           const Text(
             "Tk 0.00",
-            style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 24),
           Row(
@@ -162,8 +202,18 @@ class WalletScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11)),
-        Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white60, fontSize: 11),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
       ],
     );
   }
@@ -179,7 +229,11 @@ class WalletScreen extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
           child: Icon(icon, color: color, size: 28),
@@ -187,7 +241,11 @@ class WalletScreen extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           label,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF4F4F4F)),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF4F4F4F),
+          ),
         ),
       ],
     );

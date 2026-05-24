@@ -5,7 +5,8 @@ version: 1.0.0+1
 
 environment:
   sdk: ^3.9.0
-
+cloudinary_public: ^0.23.1
+image_picker: ^1.1.2
 dependencies:
   flutter:       # CRITICAL: Required for every Flutter project - DO NOT REMOVE
     sdk: flutter # CRITICAL: Required for every Flutter project - DO NOT REMOVE
@@ -27,10 +28,11 @@ dependencies:
   fluttertoast: ^9.0.0
   fl_chart: ^1.2.0
 
-  http: ^1.2.1
+  http: ^1.6.0
   universal_html: ^2.2.4
   firebase_core: ^4.7.0
   firebase_auth: ^6.4.0
+  firebase_storage: ^13.3.0
   cloud_firestore: ^6.3.0
   geocoding: ^4.0.0
   geolocator: ^14.0.2

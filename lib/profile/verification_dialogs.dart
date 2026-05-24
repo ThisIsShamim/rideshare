@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'verification_service.dart'; // নতুন তৈরি করা ফাইলটি ইমপোর্ট করা হয়েছে
 
 class VerificationDialogs {
   // --- bishal university list ---
@@ -128,13 +129,16 @@ class VerificationDialogs {
     TextEditingController deptController = TextEditingController();
     TextEditingController idController = TextEditingController();
     String? selectedRole;
-    int currentPage = 1; // 1: Info & Selection, 2: ID & Upload
-    String? pickedProfilePhotoName;
-    String? pickedFileName;
+    int currentPage = 1;
+
+    // ফাইলের জন্য সঠিক ভেরিয়েবল
+    PlatformFile? pickedProfilePhoto;
+    PlatformFile? pickedIdCardFile;
+    bool isSubmitting = false; // লোডিং দেখানোর জন্য
 
     showDialog(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: !isSubmitting,
       barrierColor: Colors.black.withOpacity(0.5),
       builder: (context) {
         return StatefulBuilder(
@@ -170,10 +174,14 @@ class VerificationDialogs {
                       Align(
                         alignment: Alignment.topRight,
                         child: GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(
+                          onTap: isSubmitting
+                              ? null
+                              : () => Navigator.pop(context),
+                          child: Icon(
                             Icons.close,
-                            color: Color(0xFF828282),
+                            color: isSubmitting
+                                ? Colors.grey
+                                : const Color(0xFF828282),
                             size: 22,
                           ),
                         ),
@@ -251,7 +259,7 @@ class VerificationDialogs {
                         ),
                         const SizedBox(height: 20),
 
-                        // Role Dropdown (Updated as per screenshot)
+                        // Role Dropdown
                         _buildFieldLabel("I am a *"),
                         _buildRoleDropdown(
                           value: selectedRole,
@@ -264,7 +272,7 @@ class VerificationDialogs {
                         ),
                         const SizedBox(height: 16),
 
-                        // University Selector (Updated as per screenshot)
+                        // University Selector
                         _buildFieldLabel("University *"),
                         _buildBottomSheetSelector(
                           hint: "Search your university...",
@@ -306,7 +314,7 @@ class VerificationDialogs {
                         ],
                         const SizedBox(height: 16),
 
-                        // Department Selector (Updated as per screenshot)
+                        // Department Selector
                         _buildFieldLabel("Department *"),
                         _buildBottomSheetSelector(
                           hint: "Search your department...",
@@ -393,15 +401,10 @@ class VerificationDialogs {
                               try {
                                 FilePickerResult? result = await FilePicker
                                     .platform
-                                    .pickFiles(
-                                      type: FileType.custom,
-                                      allowedExtensions: ['jpg', 'jpeg', 'png'],
-                                      allowMultiple: false,
-                                    );
-                                if (result != null && result.files.isNotEmpty) {
+                                    .pickFiles(type: FileType.image);
+                                if (result != null) {
                                   setModalState(() {
-                                    pickedProfilePhotoName =
-                                        result.files.single.name;
+                                    pickedProfilePhoto = result.files.single;
                                   });
                                 }
                               } catch (e) {
@@ -418,7 +421,7 @@ class VerificationDialogs {
                                 color: const Color(0xFFF9FAFC),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: pickedProfilePhotoName != null
+                                  color: pickedProfilePhoto != null
                                       ? const Color(0xFF219653)
                                       : const Color(0xFFE0E0E0),
                                   width: 1,
@@ -427,25 +430,27 @@ class VerificationDialogs {
                               child: Column(
                                 children: [
                                   Icon(
-                                    pickedProfilePhotoName != null
+                                    pickedProfilePhoto != null
                                         ? Icons.check_circle_outline
                                         : Icons.photo_camera_outlined,
                                     size: 32,
-                                    color: pickedProfilePhotoName != null
+                                    color: pickedProfilePhoto != null
                                         ? const Color(0xFF219653)
                                         : const Color(0xFF828282),
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    pickedProfilePhotoName ??
+                                    pickedProfilePhoto?.name ??
                                         "Tap to upload profile photo",
                                     textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: pickedProfilePhotoName != null
+                                      color: pickedProfilePhoto != null
                                           ? const Color(0xFF219653)
                                           : const Color(0xFF828282),
-                                      fontWeight: pickedProfilePhotoName != null
+                                      fontWeight: pickedProfilePhoto != null
                                           ? FontWeight.w500
                                           : FontWeight.normal,
                                     ),
@@ -472,7 +477,7 @@ class VerificationDialogs {
                         ),
                         const SizedBox(height: 16),
 
-                        // File Upload Card
+                        // File Upload Card for ID
                         _buildFieldLabel("Upload ID Card *"),
                         GestureDetector(
                           behavior: HitTestBehavior.opaque,
@@ -489,7 +494,7 @@ class VerificationDialogs {
                                 );
                             if (result != null) {
                               setModalState(() {
-                                pickedFileName = result.files.single.name;
+                                pickedIdCardFile = result.files.single;
                               });
                             }
                           },
@@ -503,7 +508,7 @@ class VerificationDialogs {
                               color: const Color(0xFFF9FAFC),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: pickedFileName != null
+                                color: pickedIdCardFile != null
                                     ? const Color(0xFF219653)
                                     : const Color(0xFFE0E0E0),
                                 width: 1,
@@ -512,24 +517,26 @@ class VerificationDialogs {
                             child: Column(
                               children: [
                                 Icon(
-                                  pickedFileName != null
+                                  pickedIdCardFile != null
                                       ? Icons.check_circle_outline
                                       : Icons.upload_file_outlined,
                                   size: 32,
-                                  color: pickedFileName != null
+                                  color: pickedIdCardFile != null
                                       ? const Color(0xFF219653)
                                       : const Color(0xFF828282),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  pickedFileName ?? uploadHintText,
+                                  pickedIdCardFile?.name ?? uploadHintText,
                                   textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: pickedFileName != null
+                                    color: pickedIdCardFile != null
                                         ? const Color(0xFF219653)
                                         : const Color(0xFF828282),
-                                    fontWeight: pickedFileName != null
+                                    fontWeight: pickedIdCardFile != null
                                         ? FontWeight.w500
                                         : FontWeight.normal,
                                   ),
@@ -540,7 +547,7 @@ class VerificationDialogs {
                         ),
                         const SizedBox(height: 24),
 
-                        // Action Buttons
+                        // Action Buttons (Back and Submit)
                         Row(
                           children: [
                             Expanded(
@@ -555,11 +562,13 @@ class VerificationDialogs {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  onPressed: () {
-                                    setModalState(() {
-                                      currentPage = 1;
-                                    });
-                                  },
+                                  onPressed: isSubmitting
+                                      ? null
+                                      : () {
+                                          setModalState(() {
+                                            currentPage = 1;
+                                          });
+                                        },
                                   child: const Text(
                                     "Back",
                                     style: TextStyle(
@@ -587,19 +596,73 @@ class VerificationDialogs {
                                   ),
                                   onPressed:
                                       (idController.text.isNotEmpty &&
-                                          pickedProfilePhotoName != null &&
-                                          pickedFileName != null)
-                                      ? () {
-                                          Navigator.pop(context);
+                                          pickedProfilePhoto != null &&
+                                          pickedIdCardFile != null &&
+                                          !isSubmitting)
+                                      ? () async {
+                                          setModalState(() {
+                                            isSubmitting = true;
+                                          });
+
+                                          // Firebase Backend Call
+                                          bool
+                                          success = await VerificationService()
+                                              .submitUserVerification(
+                                                role: selectedRole ?? "Student",
+                                                university: uniController.text,
+                                                department: deptController.text,
+                                                idNumber: idController.text,
+                                                profilePhoto:
+                                                    pickedProfilePhoto!,
+                                                idCardFile: pickedIdCardFile!,
+                                              );
+
+                                          setModalState(() {
+                                            isSubmitting = false;
+                                          });
+
+                                          if (success) {
+                                            Navigator.pop(context);
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Verification submitted successfully!",
+                                                ),
+                                                backgroundColor: Colors.green,
+                                              ),
+                                            );
+                                          } else {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Failed to submit. Try again.",
+                                                ),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                          }
                                         }
                                       : null,
-                                  child: const Text(
-                                    "Submit",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                  child: isSubmitting
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Text(
+                                          "Submit",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                 ),
                               ),
                             ),
@@ -625,14 +688,17 @@ class VerificationDialogs {
 
     int currentPage = 1;
 
-    String? pickedLicenseFile;
-    String? pickedNidFile;
-    String? pickedVehicleRegFile;
-    String? pickedInsuranceFile;
+    // ফাইলের জন্য সঠিক ভেরিয়েবল
+    PlatformFile? pickedLicenseFile;
+    PlatformFile? pickedNidFile;
+    PlatformFile? pickedVehicleRegFile;
+    PlatformFile? pickedInsuranceFile;
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: !isSubmitting,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
@@ -675,10 +741,14 @@ class VerificationDialogs {
                     Align(
                       alignment: Alignment.topRight,
                       child: GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(
+                        onTap: isSubmitting
+                            ? null
+                            : () => Navigator.pop(context),
+                        child: Icon(
                           Icons.close,
-                          color: Color(0xFF4F4F4F),
+                          color: isSubmitting
+                              ? Colors.grey
+                              : const Color(0xFF4F4F4F),
                           size: 24,
                         ),
                       ),
@@ -868,7 +938,7 @@ class VerificationDialogs {
                               );
                           if (r != null) {
                             setModalState(
-                              () => pickedLicenseFile = r.files.single.name,
+                              () => pickedLicenseFile = r.files.single,
                             );
                           }
                         },
@@ -891,9 +961,7 @@ class VerificationDialogs {
                                 ],
                               );
                           if (r != null) {
-                            setModalState(
-                              () => pickedNidFile = r.files.single.name,
-                            );
+                            setModalState(() => pickedNidFile = r.files.single);
                           }
                         },
                       ),
@@ -916,7 +984,7 @@ class VerificationDialogs {
                               );
                           if (r != null) {
                             setModalState(
-                              () => pickedVehicleRegFile = r.files.single.name,
+                              () => pickedVehicleRegFile = r.files.single,
                             );
                           }
                         },
@@ -940,7 +1008,7 @@ class VerificationDialogs {
                               );
                           if (r != null) {
                             setModalState(
-                              () => pickedInsuranceFile = r.files.single.name,
+                              () => pickedInsuranceFile = r.files.single,
                             );
                           }
                         },
@@ -961,11 +1029,13 @@ class VerificationDialogs {
                                   ),
                                   backgroundColor: Colors.white,
                                 ),
-                                onPressed: () {
-                                  setModalState(() {
-                                    currentPage = 2;
-                                  });
-                                },
+                                onPressed: isSubmitting
+                                    ? null
+                                    : () {
+                                        setModalState(() {
+                                          currentPage = 2;
+                                        });
+                                      },
                                 child: const Text(
                                   'Back',
                                   style: TextStyle(
@@ -983,7 +1053,8 @@ class VerificationDialogs {
                               height: 46,
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: isAllUploaded
+                                  backgroundColor:
+                                      (isAllUploaded && !isSubmitting)
                                       ? const Color(0xFF070B19)
                                       : const Color(0xFF9EA8B3),
                                   shape: RoundedRectangleBorder(
@@ -991,19 +1062,76 @@ class VerificationDialogs {
                                   ),
                                   elevation: 0,
                                 ),
-                                onPressed: isAllUploaded
-                                    ? () {
-                                        Navigator.pop(context);
+                                onPressed: (isAllUploaded && !isSubmitting)
+                                    ? () async {
+                                        setModalState(() {
+                                          isSubmitting = true;
+                                        });
+
+                                        // Firebase Backend Call for Driver
+                                        bool
+                                        success = await VerificationService()
+                                            .submitDriverVerification(
+                                              drivingLicenseNumber:
+                                                  drivingLicenseController.text,
+                                              nidNumber: nidController.text,
+                                              vehicleRegNumber:
+                                                  vehicleRegController.text,
+                                              licenseFile: pickedLicenseFile!,
+                                              nidFile: pickedNidFile!,
+                                              vehicleRegFile:
+                                                  pickedVehicleRegFile!,
+                                              insuranceFile:
+                                                  pickedInsuranceFile!,
+                                            );
+
+                                        setModalState(() {
+                                          isSubmitting = false;
+                                        });
+
+                                        if (success) {
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Driver verification submitted!",
+                                              ),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Failed to submit. Try again.",
+                                              ),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                        }
                                       }
                                     : null,
-                                child: const Text(
-                                  'Submit for Verification',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                child: isSubmitting
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Submit for Verification',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
                           ),
@@ -1027,7 +1155,7 @@ class VerificationDialogs {
     required String title,
     required String subtitle,
     required IconData icon,
-    required String? pickedFile,
+    required PlatformFile? pickedFile, // String এর বদলে PlatformFile
     required VoidCallback onTap,
   }) {
     bool isUploaded = pickedFile != null;
@@ -1112,7 +1240,7 @@ class VerificationDialogs {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
-                      isUploaded ? pickedFile : "Click to upload",
+                      isUploaded ? pickedFile!.name : "Click to upload",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -1187,7 +1315,6 @@ class VerificationDialogs {
     );
   }
 
-  // Updated to match exactly like the screenshot with Emojis
   static Widget _buildRoleDropdown({
     required String? value,
     required String hint,
@@ -1243,7 +1370,6 @@ class VerificationDialogs {
     );
   }
 
-  // Updated to match exact search-style layout with trailing search icon
   static Widget _buildBottomSheetSelector({
     required String hint,
     required String value,
